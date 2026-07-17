@@ -198,7 +198,7 @@ class LtxvTrainer:
 
         # Create progress tracking (disabled for non-main processes or when explicitly disabled)
         progress_enabled = IS_MAIN_PROCESS and not disable_progress_bars
-        progress_enabled = False
+        # progress_enabled = False
         progress = TrainingProgress(
             enabled=progress_enabled,
             total_steps=remaining_steps,
@@ -392,8 +392,11 @@ class LtxvTrainer:
         conditions["prompt_attention_mask"] = attention_mask
 
         # Use strategy to prepare training inputs (returns ModelInputs with Modality objects)
-        # model_inputs = self._training_strategy.prepare_training_inputs(batch, self._timestep_sampler, self._transformer)
-        model_inputs = self._training_strategy.prepare_customize_training_inputs(batch, self._timestep_sampler, self._transformer)
+        
+        if self._transformer.get_base_model().spatial_track_encoder is None:
+            model_inputs = self._training_strategy.prepare_training_inputs(batch, self._timestep_sampler)
+        else:
+            model_inputs = self._training_strategy.prepare_customize_training_inputs(batch, self._timestep_sampler, self._transformer)
 
         # Run transformer forward pass with Modality-based interface
         video_pred, audio_pred = self._transformer(
@@ -495,19 +498,31 @@ class LtxvTrainer:
     def _setup_lora(self) -> None:
         """Configure LoRA adapters for the transformer. Only called in LoRA training mode."""
         logger.debug(f"Adding LoRA adapter with rank {self._config.lora.rank}")
-        
-        lora_config = LoraConfig(
-            r=self._config.lora.rank,
-            lora_alpha=self._config.lora.alpha,
-            target_modules=self._config.lora.target_modules,
-            lora_dropout=self._config.lora.dropout,
-            init_lora_weights=True,
-            # Train and save these complete newly-added modules.
-            modules_to_save=[
-                "spatial_track_encoder",
-            ],
-        )
-        
+        # breakpoint()
+        if self._transformer.spatial_track_encoder is not None:
+            lora_config = LoraConfig(
+                r=self._config.lora.rank,
+                lora_alpha=self._config.lora.alpha,
+                target_modules=self._config.lora.target_modules,
+                lora_dropout=self._config.lora.dropout,
+                init_lora_weights=True,
+                # Train and save these complete newly-added modules.
+                modules_to_save=[
+                    "spatial_track_encoder",
+                ],
+            )
+            print("spatial_track_encoder is modules_to_save")
+        else:
+            lora_config = LoraConfig(
+                r=self._config.lora.rank,
+                lora_alpha=self._config.lora.alpha,
+                target_modules=self._config.lora.target_modules,
+                lora_dropout=self._config.lora.dropout,
+                init_lora_weights=True,
+                # Train and save these complete newly-added modules.
+            )
+            print("spatial_track_encoder is not modules_to_save")
+
         # Wrap the transformer with PEFT to add LoRA layers
         # noinspection PyTypeChecker
         self._transformer = get_peft_model(self._transformer, lora_config)
@@ -517,22 +532,22 @@ class LtxvTrainer:
         # ---------------------------------------------------------
         base_model = self._transformer.get_base_model()
 
-        assert base_model.spatial_track_encoder is not None
-        trainable_custom_params = sum(
-            p.numel()
-            for p in base_model.spatial_track_encoder.parameters()
-            if p.requires_grad
-        )
-
-        logger.info(
-            f"Trainable SpatialTrackEncoder params: "
-            f"{trainable_custom_params:,}"
-        )
-
-        if trainable_custom_params == 0:
-            raise RuntimeError(
-                "SpatialTrackEncoder is frozen after PEFT wrapping."
+        if base_model.spatial_track_encoder is not None:
+            trainable_custom_params = sum(
+                p.numel()
+                for p in base_model.spatial_track_encoder.parameters()
+                if p.requires_grad
             )
+
+            logger.info(
+                f"Trainable SpatialTrackEncoder params: "
+                f"{trainable_custom_params:,}"
+            )
+
+            if trainable_custom_params == 0:
+                raise RuntimeError(
+                    "SpatialTrackEncoder is frozen after PEFT wrapping."
+                )
 
 
     def _load_checkpoint(self) -> None:
@@ -774,28 +789,156 @@ class LtxvTrainer:
     def _prepare_models_for_training(self) -> None:
         """Prepare models for training with Accelerate."""
 
-        # For FSDP + LoRA: Cast entire model to FP32.
-        # FSDP requires uniform dtype across all parameters in wrapped modules.
-        # In LoRA mode, PEFT creates LoRA params in FP32 while base model is BF16.
-        # We cast the base model to FP32 to match the LoRA params.
-        if self._accelerator.distributed_type == DistributedType.FSDP and self._config.model.training_mode == "lora":
-            logger.debug("FSDP: casting transformer to FP32 for uniform dtype")
-            self._transformer = self._transformer.to(dtype=torch.float32)
+        if (
+            self._accelerator.distributed_type == DistributedType.FSDP
+            and self._config.model.training_mode == "lora"
+        ):
+            logger.debug(
+                "FSDP: casting transformer to FP32 for uniform dtype"
+            )
+            self._transformer = self._transformer.to(
+                dtype=torch.float32
+            )
 
-        # Enable gradient checkpointing if requested
-        # For PeftModel, we need to access the underlying base model
+        # Enable gradient checkpointing before FSDP wrapping.
         transformer = (
-            self._transformer.get_base_model() if hasattr(self._transformer, "get_base_model") else self._transformer
+            self._transformer.get_base_model()
+            if hasattr(self._transformer, "get_base_model")
+            else self._transformer
         )
 
-        transformer.set_gradient_checkpointing(self._config.optimization.enable_gradient_checkpointing)
+        transformer.set_gradient_checkpointing(
+            self._config.optimization.enable_gradient_checkpointing
+        )
 
-        # noinspection PyTypeChecker
-        self._transformer = self._accelerator.prepare(self._transformer)
+        # PEFT model -> FSDP model.
+        # breakpoint()
+        if self._transformer.spatial_track_encoder is None:
+            print("self._transformer.spatial_track_encoder is None")
+        else:
+            print("self._transformer.spatial_track_encoder is not None")
+            
+        
+        self._transformer = self._accelerator.prepare(
+            self._transformer
+        )
 
-        # Log GPU memory usage after model preparation
-        vram_usage_gb = torch.cuda.memory_allocated() / 1024**3
-        logger.debug(f"GPU memory usage after models preparation: {vram_usage_gb:.2f} GB")
+        # Important:
+        # Initial validation runs before the first complete transformer
+        # forward. Force the outermost FSDP instance to initialize the
+        # entire FSDP hierarchy first, preventing an inner FSDP unit from
+        # incorrectly declaring itself as root.
+        self._initialize_fsdp_runtime()
+
+        vram_usage_gb = (
+            torch.cuda.memory_allocated() / 1024**3
+        )
+        logger.debug(
+            f"GPU memory usage after models preparation: "
+            f"{vram_usage_gb:.2f} GB"
+        )
+
+    def _initialize_fsdp_runtime(self) -> None:
+        """
+        Initialize the complete FSDP hierarchy from its outermost root.
+
+        This must happen before validation or any operation that may touch
+        an individually wrapped FSDP child module.
+
+        It does not:
+        - run a model forward;
+        - modify parameter values;
+        - change trainable parameters;
+        - alter LoRA adapters;
+        - alter checkpoint keys.
+        """
+        if (
+            self._accelerator.distributed_type
+            != DistributedType.FSDP
+        ):
+            return
+
+        from torch.distributed.fsdp import (
+            FullyShardedDataParallel as FSDP,
+        )
+        from torch.distributed.fsdp._runtime_utils import (
+            _lazy_init,
+        )
+
+        # Normally accelerator.prepare() returns FSDP directly.
+        if isinstance(self._transformer, FSDP):
+            fsdp_root = self._transformer
+        else:
+            # This branch supports an outer torch.compile/OptimizedModule
+            # wrapper around the actual FSDP root.
+            fsdp_root = next(
+                (
+                    module
+                    for module in self._transformer.modules()
+                    if isinstance(module, FSDP)
+                ),
+                None,
+            )
+
+        if fsdp_root is None:
+            raise RuntimeError(
+                "Distributed type is FSDP, but no FSDP root was "
+                "found after accelerator.prepare()."
+            )
+
+        # Synchronize before creating rank-local FSDP runtime state.
+        self._accelerator.wait_for_everyone()
+
+        # Equivalent to the lazy initialization normally performed by
+        # the first complete root forward. Doing it here guarantees that
+        # all nested FSDP instances are marked as non-root first.
+        _lazy_init(fsdp_root, fsdp_root)
+
+        # Validate the resulting hierarchy. Do not manually modify
+        # _is_root; only inspect it here.
+        incorrect_roots: list[str] = []
+        fsdp_count = 0
+
+        for module_name, module in fsdp_root.named_modules():
+            if not isinstance(module, FSDP):
+                continue
+
+            fsdp_count += 1
+
+            if (
+                module is not fsdp_root
+                and getattr(module, "_is_root", None) is True
+            ):
+                incorrect_roots.append(
+                    module_name or "<unnamed>"
+                )
+
+        if incorrect_roots:
+            raise RuntimeError(
+                "FSDP hierarchy initialization failed: nested FSDP "
+                "instances are still marked as roots:\n"
+                + "\n".join(
+                    f"  - {name}"
+                    for name in incorrect_roots[:50]
+                )
+            )
+
+        root_flag = getattr(fsdp_root, "_is_root", None)
+
+        if root_flag is not True:
+            raise RuntimeError(
+                "The outermost FSDP instance was not initialized "
+                f"as root. Current _is_root value: {root_flag!r}"
+            )
+
+        logger.info(
+            "FSDP runtime hierarchy initialized successfully: "
+            f"root_is_root={root_flag}, "
+            f"total_fsdp_instances={fsdp_count}"
+        )
+
+        self._accelerator.wait_for_everyone()
+
 
     @staticmethod
     def _find_checkpoint(checkpoint_path: str | Path) -> Path | None:
