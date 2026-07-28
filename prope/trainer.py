@@ -205,7 +205,7 @@ class LtxvTrainer:
 
         # Create progress tracking (disabled for non-main processes or when explicitly disabled)
         progress_enabled = IS_MAIN_PROCESS and not disable_progress_bars
-        progress_enabled = False
+        # progress_enabled = False
         progress = TrainingProgress(
             enabled=progress_enabled,
             total_steps=remaining_steps,
@@ -400,7 +400,7 @@ class LtxvTrainer:
 
         # Use strategy to prepare training inputs (returns ModelInputs with Modality objects)
         
-        breakpoint()
+        # breakpoint()
         if self._transformer.get_base_model().spatial_track_encoder is None:
             model_inputs = self._training_strategy.prepare_training_inputs(batch, self._timestep_sampler)
         else:
@@ -612,13 +612,24 @@ class LtxvTrainer:
             is not None
         )
 
+        # lora_config = LoraConfig(
+        #     r=self._config.lora.rank,
+        #     lora_alpha=self._config.lora.alpha,
+        #     target_modules=self._config.lora.target_modules,
+        #     lora_dropout=self._config.lora.dropout,
+        #     init_lora_weights=True,
+        # )
+        if has_spatial_track_encoder:
+            modules_to_save = ["spatial_track_encoder"]
         lora_config = LoraConfig(
             r=self._config.lora.rank,
             lora_alpha=self._config.lora.alpha,
             target_modules=self._config.lora.target_modules,
             lora_dropout=self._config.lora.dropout,
             init_lora_weights=True,
+            modules_to_save=modules_to_save,
         )
+
 
         self._transformer = get_peft_model(
             self._transformer,
