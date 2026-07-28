@@ -1,463 +1,659 @@
 #!/usr/bin/env python3
-"""
-Render a single-object raw-pixel xyxy bbox.npy as an LTX Motion Track IC-LoRA
-tracker video.
+"""Batch-render multi-track motion videos from masks.npy files.
 
-Color encoding note
--------------------
-- The sparse-track frame buffer uses the official Motion-Track RGB -> BGR numerical
-  channel convention, but is encoded as standard YUV H.264 rather than libx264rgb.
-  This avoids nonstandard planar-GBR (gbrp) playback artifacts such as green casts.
+This script is a bounded multi-threaded renderer. It recursively finds
+``masks.npy`` files below a parent directory, derives one smoothed centroid
+trajectory per mask channel, and writes a sibling ``motion.mp4``.
 
-Input modes
------------
-1) One bbox.npy
-   - Reads sibling masks.npy.
-   - Writes sibling tracker.mp4.
+Supported mask layouts
+----------------------
+    [T, H, W]       : one trajectory
+    [T, C, H, W]    : C independent trajectories, one per mask channel
 
-2) One .txt file
-   - Each non-empty line is an MP4 path.
-   - Reads <mp4_parent>/bbox.npy and <mp4_parent>/masks.npy.
-   - Writes <mp4_parent>/tracker.mp4.
+For example, a boolean array with shape ``[121, 3, 720, 406]`` produces one
+406x720 video containing three independently smoothed trajectories.
 
-3) One parent directory
-   - Recursively finds bbox.npy files.
-   - For each bbox.npy, reads sibling masks.npy and writes sibling tracker.mp4.
+Output guarantees
+-----------------
+    * exactly 121 frames
+    * 24 fps
+    * output width/height exactly match masks.npy (W x H)
+    * black background
+    * one distinct color per mask channel when C > 1
 
-Strict data contract
---------------------
-- bbox.npy must be raw, unnormalized xyxy pixel coordinates.
-- Supported bbox shapes: [T, 4] or [T, 1, 4].
-- masks.npy must be next to bbox.npy and must expose video dimensions as
-  [T, H, W] (or [T, N, H, W]; the last two dimensions are used as H, W).
-- Output tracker.mp4 is written at exactly W x H, where W/H come from masks.npy.
-- bbox and masks must have the same temporal length T. This prevents silently
-  creating a temporally misaligned tracker video.
+Robustness / smoothing pipeline per channel
+-------------------------------------------
+    1. Compute the centroid of the largest connected component (default) or
+       all foreground pixels for every frame.
+    2. Ignore empty/tiny masks.
+    3. Linearly interpolate invalid frames from valid temporal neighbours.
+    4. Replace isolated local-median outliers.
+    5. Apply a symmetric triangular temporal smoother.
 
-Invalid bbox frames (NaN/Inf, x2 <= x1, or y2 <= y1) are treated as missing
-observations. Their centers are linearly interpolated from valid frames; leading
-and trailing gaps use the nearest valid center.
+Concurrency safety
+------------------
+    * A bounded ThreadPoolExecutor processes samples concurrently.
+    * Only the main thread updates tqdm.
+    * Each FFmpeg process has a hard timeout and is tracked for cancellation.
+    * FFmpeg stderr goes to a temporary file rather than a PIPE, preventing
+      stderr-buffer deadlocks.
+    * Videos are first written to a temporary path and atomically replaced
+      only after a successful encode.
 """
 
 from __future__ import annotations
 
 import argparse
-import json
+import os
 import shutil
 import subprocess
-import sys
-from dataclasses import dataclass
+import tempfile
+import threading
+import time
+import uuid
+from concurrent.futures import FIRST_COMPLETED, Future, ThreadPoolExecutor, wait
 from pathlib import Path
-from typing import Iterator, Sequence
+from typing import Any, Iterator
 
 import cv2
 import numpy as np
-
-try:
-    from tqdm import tqdm
-except ImportError:
-    tqdm = None
+from tqdm import tqdm
 
 
-# Keep these values consistent with the supplied sparse_tracks.py-style renderer.
+NUM_FRAMES = 121
+FPS = 24
+
+# Sparse-track-style trail rendering constants.
 _MIN_RADIUS = 2
 _MAX_RADIUS = 8
 _MAX_TRAIL = 50
 _REF_SHORT_SIDE = 1080
 
+# Distinct RGB colours for channel identities in multi-track videos.
+# Channel 0/1/2 are red/green/blue respectively, so a [T,3,H,W] input is
+# immediately readable. Further channels cycle through additional hues.
+_TRACK_COLORS_RGB: tuple[tuple[int, int, int], ...] = (
+    (255, 72, 72),    # red
+    (72, 230, 112),   # green
+    (76, 148, 255),   # blue
+    (255, 210, 62),   # yellow
+    (225, 82, 255),   # magenta
+    (58, 228, 228),   # cyan
+    (255, 142, 58),   # orange
+    (170, 110, 255),  # violet
+)
 
-@dataclass(frozen=True)
-class Job:
-    bbox_path: Path
-    masks_path: Path
-    output_path: Path
-    label: str
+
+class SkipSample(RuntimeError):
+    """Expected non-fatal skip for one sample."""
+
+
+class BatchCancelled(RuntimeError):
+    """Raised inside a worker after Ctrl+C requests cancellation."""
+
+
+class ActiveProcessRegistry:
+    """Thread-safe registry of active FFmpeg processes."""
+
+    def __init__(self) -> None:
+        self._lock = threading.Lock()
+        self._processes: dict[int, subprocess.Popen[Any]] = {}
+
+    def add(self, process: subprocess.Popen[Any]) -> None:
+        with self._lock:
+            self._processes[id(process)] = process
+
+    def discard(self, process: subprocess.Popen[Any]) -> None:
+        with self._lock:
+            self._processes.pop(id(process), None)
+
+    def terminate_all(self) -> None:
+        with self._lock:
+            processes = list(self._processes.values())
+
+        for process in processes:
+            if process.poll() is None:
+                try:
+                    process.kill()
+                except (ProcessLookupError, OSError):
+                    pass
+
+
+def positive_int(value: str) -> int:
+    parsed = int(value)
+    if parsed < 1:
+        raise argparse.ArgumentTypeError("value must be >= 1")
+    return parsed
+
+
+def nonnegative_float(value: str) -> float:
+    parsed = float(value)
+    if parsed < 0.0:
+        raise argparse.ArgumentTypeError("value must be >= 0")
+    return parsed
+
+
+def positive_float(value: str) -> float:
+    parsed = float(value)
+    if parsed <= 0.0:
+        raise argparse.ArgumentTypeError("value must be > 0")
+    return parsed
+
+
+def odd_positive_int(value: str) -> int:
+    parsed = int(value)
+    if parsed < 1 or parsed % 2 == 0:
+        raise argparse.ArgumentTypeError("value must be a positive odd integer")
+    return parsed
+
+
+def default_workers() -> int:
+    """Conservative default to avoid overloading storage and CPU."""
+    return min(8, max(1, os.cpu_count() or 1))
 
 
 def parse_args() -> argparse.Namespace:
     parser = argparse.ArgumentParser(
         description=(
-            "Convert raw-pixel xyxy bbox.npy trajectories to LTX Motion Track "
-            "tracker videos. Input may be bbox.npy, a txt list of MP4 paths, "
-            "or a parent directory."
+            "Render one multi-track, 121-frame, 24-fps motion.mp4 beside each "
+            "masks.npy found recursively below parent_dir."
         ),
         formatter_class=argparse.ArgumentDefaultsHelpFormatter,
     )
     parser.add_argument(
-        "input_path",
+        "parent_dir",
         type=Path,
-        help="One bbox.npy, one .txt list, or a parent directory containing bbox.npy files.",
-    )
-    parser.add_argument(
-        "--fps",
-        type=float,
-        default=24.0,
-        help="Tracker video FPS.",
-    )
-    parser.add_argument(
-        "--num-frames",
-        type=int,
-        default=0,
-        help=(
-            "Output frame count. 0 preserves the bbox/masks temporal length exactly; "
-            "a positive value linearly resamples the center trajectory."
-        ),
+        help="Parent directory containing sample subdirectories.",
     )
     parser.add_argument(
         "--output-name",
-        type=str,
-        default="tracker.mp4",
-        help="Tracker filename saved beside each bbox.npy.",
+        default="motion.mp4",
+        help="Output filename written beside every masks.npy.",
     )
     parser.add_argument(
-        "--save-json",
+        "--keep-existing",
         action="store_true",
-        help="Also save the final integer track points beside tracker.mp4 as tracker.json.",
+        help="Skip samples whose output video already exists.",
     )
     parser.add_argument(
-        "--overwrite",
-        action="store_true",
-        help="Overwrite an existing tracker.mp4.",
+        "--workers",
+        type=positive_int,
+        default=default_workers(),
+        help="Number of samples handled concurrently.",
     )
     parser.add_argument(
-        "--fail-fast",
-        action="store_true",
-        help="Stop at the first failed sample in txt/directory batch mode.",
+        "--max-in-flight",
+        type=positive_int,
+        default=None,
+        help=(
+            "Maximum submitted-but-unfinished samples. Defaults to 2 * workers; "
+            "the bound prevents a huge pending Future queue."
+        ),
+    )
+    parser.add_argument(
+        "--ffmpeg-threads",
+        type=positive_int,
+        default=1,
+        help=(
+            "Encoder threads per FFmpeg child process. Keep this at 1 when "
+            "using multiple --workers."
+        ),
+    )
+    parser.add_argument(
+        "--ffmpeg-timeout-seconds",
+        type=positive_float,
+        default=180.0,
+        help="Hard timeout for one FFmpeg encoding job.",
+    )
+    parser.add_argument(
+        "--centroid-mode",
+        choices=("largest-component", "all-foreground"),
+        default="largest-component",
+        help=(
+            "largest-component ignores small stray fragments per mask channel; "
+            "all-foreground uses all foreground pixels in a channel."
+        ),
+    )
+    parser.add_argument(
+        "--min-mask-pixels",
+        type=positive_int,
+        default=16,
+        help="Masks/components smaller than this are invalid for that frame.",
+    )
+    parser.add_argument(
+        "--min-valid-ratio",
+        type=nonnegative_float,
+        default=0.10,
+        help=(
+            "Minimum valid-centroid ratio required per channel among the first "
+            "121 frames. A channel below this threshold is omitted, but other "
+            "valid channels in the same file are still rendered."
+        ),
+    )
+    parser.add_argument(
+        "--smooth-window",
+        type=odd_positive_int,
+        default=7,
+        help=(
+            "Odd temporal window for spike repair and symmetric triangular "
+            "smoothing. Set to 1 to disable smoothing."
+        ),
+    )
+    parser.add_argument(
+        "--spike-threshold-ratio",
+        type=nonnegative_float,
+        default=0.03,
+        help=(
+            "A point farther than this fraction of the image diagonal from its "
+            "local median is repaired as an isolated spike. Set 0 to disable "
+            "spike repair only."
+        ),
     )
     args = parser.parse_args()
 
-    if args.fps <= 0:
-        parser.error("--fps must be positive.")
-    if args.num_frames < 0:
-        parser.error("--num-frames must be >= 0.")
-    if not args.output_name.lower().endswith(".mp4"):
-        parser.error("--output-name must end with .mp4.")
+    if not (0.0 <= args.min_valid_ratio <= 1.0):
+        parser.error("--min-valid-ratio must be in [0, 1].")
     return args
 
 
-def make_job(bbox_path: Path, output_name: str, label: str | None = None) -> Job:
-    bbox_path = bbox_path.expanduser()
-    return Job(
-        bbox_path=bbox_path,
-        masks_path=bbox_path.parent / "masks.npy",
-        output_path=bbox_path.parent / output_name,
-        label=label or str(bbox_path),
-    )
+def mask_layout_and_shape(mask_array: np.ndarray) -> tuple[int, int, int, int, str]:
+    """Validate masks layout and return T, C, H, W, layout name.
 
-
-def collect_jobs(args: argparse.Namespace) -> list[Job]:
-    input_path = args.input_path.expanduser()
-    if not input_path.exists():
-        raise FileNotFoundError(f"Input does not exist: {input_path}")
-
-    jobs: list[Job] = []
-    suffix = input_path.suffix.lower()
-
-    if input_path.is_file() and suffix == ".npy":
-        if input_path.name != "bbox.npy":
-            print(
-                f"[WARN] Input file is named {input_path.name!r}, not 'bbox.npy'. "
-                "It will still be interpreted as raw xyxy boxes.",
-                file=sys.stderr,
-            )
-        jobs.append(make_job(input_path, args.output_name))
-
-    elif input_path.is_file() and suffix == ".txt":
-        for line_number, raw_line in enumerate(
-            input_path.read_text(encoding="utf-8").splitlines(), start=1
-        ):
-            line = raw_line.strip()
-            if not line or line.startswith("#"):
-                continue
-
-            mp4_path = Path(line).expanduser()
-            if not mp4_path.is_absolute():
-                raise ValueError(
-                    f"TXT line {line_number} must be an absolute MP4 path, got: {line!r}"
-                )
-            if mp4_path.suffix.lower() != ".mp4":
-                raise ValueError(
-                    f"TXT line {line_number} must point to an MP4 file, got: {mp4_path}"
-                )
-
-            bbox_path = mp4_path.parent / "bbox.npy"
-            jobs.append(
-                make_job(
-                    bbox_path,
-                    args.output_name,
-                    label=f"{input_path}:{line_number} -> {mp4_path}",
-                )
-            )
-
-    elif input_path.is_dir():
-        # rglob supports both immediate and nested sample directories.
-        for bbox_path in sorted(input_path.rglob("bbox.npy")):
-            jobs.append(make_job(bbox_path, args.output_name))
-
+    ``[T,H,W]`` is a single-track compatibility form. Any ``[T,C,H,W]`` with
+    C >= 1 is treated as C independent mask trajectories.
+    """
+    if mask_array.ndim == 3:
+        total_frames, height, width = mask_array.shape
+        channels = 1
+        layout = "[T,H,W]"
+    elif mask_array.ndim == 4:
+        total_frames, channels, height, width = mask_array.shape
+        layout = "[T,C,H,W]"
     else:
         raise ValueError(
-            "input_path must be a bbox.npy file, a .txt file, or a directory. "
-            f"Got: {input_path}"
+            f"Unsupported masks shape {tuple(mask_array.shape)}; expected "
+            "[T,H,W] or [T,C,H,W]."
         )
 
-    # A txt list can contain repeated MP4 paths. Render each bbox only once.
-    deduplicated: dict[Path, Job] = {}
-    for job in jobs:
-        deduplicated.setdefault(job.bbox_path.resolve(strict=False), job)
-
-    result = list(deduplicated.values())
-    if not result:
-        raise RuntimeError(f"No bbox.npy files found for input: {input_path}")
-    return result
-
-
-def load_raw_xyxy_bboxes(bbox_path: Path) -> np.ndarray:
-    """Load raw-pixel xyxy boxes with strict, unambiguous shape handling."""
-    if not bbox_path.is_file():
-        raise FileNotFoundError(f"bbox.npy not found: {bbox_path}")
-
-    bboxes = np.asarray(np.load(bbox_path, allow_pickle=False))
-    if bboxes.ndim == 3 and bboxes.shape[1:] == (1, 4):
-        bboxes = bboxes[:, 0, :]
-    elif bboxes.ndim == 1 and bboxes.shape == (4,):
-        bboxes = bboxes[None, :]
-
-    if bboxes.ndim != 2 or bboxes.shape[1] != 4:
+    if total_frames <= 0 or channels <= 0 or height <= 0 or width <= 0:
         raise ValueError(
-            "bbox.npy must have raw xyxy shape [T, 4] or [T, 1, 4]. "
-            f"Got {bboxes.shape} from {bbox_path}."
+            "Invalid masks dimensions: "
+            f"T={total_frames}, C={channels}, H={height}, W={width}."
         )
-    if bboxes.shape[0] == 0:
-        raise ValueError(f"bbox.npy has zero frames: {bbox_path}")
-    if not np.issubdtype(bboxes.dtype, np.number):
-        raise TypeError(f"bbox.npy must contain numeric values, got dtype={bboxes.dtype}")
-
-    return bboxes.astype(np.float64, copy=False)
+    return int(total_frames), int(channels), int(height), int(width), layout
 
 
-def read_masks_video_shape(masks_path: Path) -> tuple[int, int, int]:
-    """Return (T, H, W) from sibling masks.npy without loading its full payload."""
-    if not masks_path.is_file():
-        raise FileNotFoundError(
-            f"masks.npy not found beside bbox.npy: {masks_path}. "
-            "This script deliberately uses masks.npy as the source of original video size."
-        )
-
-    masks = np.load(masks_path, mmap_mode="r", allow_pickle=False)
-    if masks.ndim < 3:
-        raise ValueError(
-            f"masks.npy must expose at least [T, H, W], got shape {masks.shape} from {masks_path}"
-        )
-
-    # Standard project format is [T, H, W]. For [T, N, H, W], last two are still H/W.
-    frames = int(masks.shape[0])
-    height = int(masks.shape[-2])
-    width = int(masks.shape[-1])
-    if frames <= 0 or width <= 0 or height <= 0:
-        raise ValueError(f"Invalid masks.npy shape {masks.shape} from {masks_path}")
-    return frames, height, width
+def frame_mask(
+    mask_array: np.ndarray,
+    frame_index: int,
+    channel_index: int,
+) -> np.ndarray:
+    """Return one HxW mask view for either accepted input layout."""
+    if mask_array.ndim == 3:
+        if channel_index != 0:
+            raise IndexError("[T,H,W] mask input only has channel 0.")
+        return mask_array[frame_index]
+    return mask_array[frame_index, channel_index]
 
 
-def valid_raw_xyxy_mask(bboxes: np.ndarray) -> np.ndarray:
-    """A valid observation is finite and satisfies x2>x1, y2>y1."""
-    x1, y1, x2, y2 = bboxes.T
-    return np.isfinite(bboxes).all(axis=1) & (x2 > x1) & (y2 > y1)
+def centroid_from_mask(
+    mask: np.ndarray,
+    centroid_mode: str,
+    min_mask_pixels: int,
+) -> tuple[float, float] | None:
+    """Return a foreground centroid (x, y) or None for an invalid frame."""
+    foreground = np.asarray(mask, dtype=bool)
+    foreground_count = int(np.count_nonzero(foreground))
+    if foreground_count < min_mask_pixels:
+        return None
 
+    if centroid_mode == "all-foreground":
+        ys, xs = np.nonzero(foreground)
+        return float(xs.mean()), float(ys.mean())
 
-def validate_raw_xyxy_against_image(
-    bboxes: np.ndarray,
-    valid: np.ndarray,
-    width: int,
-    height: int,
-    bbox_path: Path,
-) -> None:
-    """Reject normalized boxes and raw boxes inconsistent with masks.npy dimensions."""
-    if not valid.any():
-        raise ValueError(
-            f"No valid xyxy boxes in {bbox_path}. A valid box needs finite values and x2>x1, y2>y1."
-        )
-
-    values = bboxes[valid]
-    eps = 1e-6
-
-    # The user-defined contract is explicitly non-normalized pixel xyxy.
-    # Failing early prevents a nearly invisible trajectory in a large output canvas.
-    if float(values.min()) >= -eps and float(values.max()) <= 1.0 + eps:
-        raise ValueError(
-            f"bbox.npy appears normalized to [0, 1], but this script expects raw pixel xyxy boxes. "
-            f"bbox: {bbox_path}"
-        )
-
-    x1, y1, x2, y2 = bboxes.T
-    tolerance = 1.0  # Accept small detector-rounding overshoots only.
-    out_of_bounds = valid & (
-        (x1 < -tolerance)
-        | (y1 < -tolerance)
-        | (x2 > (width + tolerance))
-        | (y2 > (height + tolerance))
+    # Largest connected component suppresses small unrelated segmentation
+    # fragments that may otherwise abruptly pull the centroid.
+    binary_u8 = foreground.astype(np.uint8, copy=False)
+    num_labels, _, stats, centroids = cv2.connectedComponentsWithStats(
+        binary_u8,
+        connectivity=8,
     )
-    if out_of_bounds.any():
-        bad = np.flatnonzero(out_of_bounds)[:5]
-        examples = "; ".join(
-            f"frame {int(i)}: {bboxes[i].tolist()}" for i in bad
-        )
-        raise ValueError(
-            "Raw xyxy bbox coordinates are inconsistent with sibling masks.npy dimensions "
-            f"W={width}, H={height}. Examples: {examples}. "
-            "Check that bbox.npy and masks.npy originate from the same video and that bbox format is xyxy."
-        )
+    if num_labels <= 1:
+        return None
+
+    component_areas = stats[1:, cv2.CC_STAT_AREA]
+    component_label = int(np.argmax(component_areas)) + 1
+    if int(stats[component_label, cv2.CC_STAT_AREA]) < min_mask_pixels:
+        return None
+
+    center_x, center_y = centroids[component_label]
+    if not (np.isfinite(center_x) and np.isfinite(center_y)):
+        return None
+    return float(center_x), float(center_y)
 
 
-def fill_missing_centers(centers: np.ndarray, valid: np.ndarray) -> np.ndarray:
-    """Fill invalid detections via 1D temporal interpolation independently for x/y."""
-    valid_indices = np.flatnonzero(valid)
-    if len(valid_indices) == 0:
-        raise ValueError("Cannot interpolate: there are no valid bbox observations.")
-
-    frame_indices = np.arange(len(centers), dtype=np.float64)
-    filled = np.empty_like(centers, dtype=np.float64)
-    for coordinate in range(2):
-        filled[:, coordinate] = np.interp(
-            frame_indices,
-            valid_indices,
-            centers[valid_indices, coordinate],
-        )
-    return filled
-
-
-def raw_xyxy_to_centers(
-    bboxes: np.ndarray,
+def interpolate_centers(
+    centers: np.ndarray,
     valid: np.ndarray,
     width: int,
     height: int,
 ) -> np.ndarray:
-    """Convert validated raw xyxy pixels directly to raw pixel centers; never normalize."""
-    x1, y1, x2, y2 = bboxes.T
-    centers = np.column_stack(((x1 + x2) * 0.5, (y1 + y2) * 0.5))
-    centers = fill_missing_centers(centers, valid)
+    """Linearly fill missing 2D centers, with nearest-value edge filling."""
+    if centers.shape != (NUM_FRAMES, 2) or valid.shape != (NUM_FRAMES,):
+        raise ValueError("Unexpected center/validity shape during interpolation.")
+    if not np.any(valid):
+        raise ValueError("Cannot interpolate a trajectory with no valid frames.")
 
-    # Valid boxes may be <=1 px outside due to detector rounding. The tracker pixel must remain valid.
-    centers[:, 0] = np.clip(centers[:, 0], 0.0, float(width - 1))
-    centers[:, 1] = np.clip(centers[:, 1], 0.0, float(height - 1))
-    return centers
+    output = centers.astype(np.float32, copy=True)
+    indices = np.arange(NUM_FRAMES, dtype=np.float32)
+    valid_indices = indices[valid]
+    for dimension in range(2):
+        output[:, dimension] = np.interp(
+            indices,
+            valid_indices,
+            output[valid, dimension],
+        ).astype(np.float32)
 
-
-def resample_centers(centers: np.ndarray, output_frames: int) -> np.ndarray:
-    if output_frames <= 0 or output_frames == len(centers):
-        return centers
-    if output_frames == 1:
-        return centers[[0]]
-
-    old_positions = np.arange(len(centers), dtype=np.float64)
-    new_positions = np.linspace(0.0, float(len(centers) - 1), output_frames)
-    result = np.empty((output_frames, 2), dtype=np.float64)
-    for coordinate in range(2):
-        result[:, coordinate] = np.interp(new_positions, old_positions, centers[:, coordinate])
-    return result
+    output[:, 0] = np.clip(output[:, 0], 0.0, float(width - 1))
+    output[:, 1] = np.clip(output[:, 1], 0.0, float(height - 1))
+    return output
 
 
-def centers_to_track(centers: np.ndarray, width: int, height: int) -> list[dict[str, int]]:
-    """Round raw pixel centers to integer pixel positions in the same W/H coordinate system."""
-    track: list[dict[str, int]] = []
-    for center_x, center_y in centers:
-        x = int(np.clip(np.rint(center_x), 0, width - 1))
-        y = int(np.clip(np.rint(center_y), 0, height - 1))
-        track.append({"x": x, "y": y})
-    return track
+def extract_mask_tracks(
+    mask_path: Path,
+    centroid_mode: str,
+    min_mask_pixels: int,
+    min_valid_ratio: float,
+) -> tuple[
+    list[tuple[int, np.ndarray, np.ndarray]],
+    list[dict[str, Any]],
+    int,
+    int,
+    int,
+    int,
+    tuple[int, ...],
+    str,
+]:
+    """Extract independently interpolated trajectories for every mask channel.
+
+    Returns
+    -------
+    active_tracks:
+        ``[(channel_index, centers[T,2], valid[T]), ...]``. Channels lacking
+        sufficient valid frames are excluded, while valid siblings survive.
+    channel_stats:
+        One record per original channel, including whether it was rendered.
+    total_frames, channels, height, width, original_shape, layout
+    """
+    masks = np.load(mask_path, mmap_mode="r", allow_pickle=False)
+    try:
+        original_shape = tuple(masks.shape)
+        total_frames, channels, height, width, layout = mask_layout_and_shape(masks)
+
+        if total_frames < NUM_FRAMES:
+            raise SkipSample(
+                f"masks has {total_frames} frames, fewer than required {NUM_FRAMES}."
+            )
+
+        min_valid_count = max(2, int(np.ceil(NUM_FRAMES * min_valid_ratio)))
+        active_tracks: list[tuple[int, np.ndarray, np.ndarray]] = []
+        channel_stats: list[dict[str, Any]] = []
+
+        # Process one channel at a time. This keeps peak memory low even for a
+        # large number of mask channels and avoids loading all masks into RAM.
+        for channel_index in range(channels):
+            centers = np.full((NUM_FRAMES, 2), np.nan, dtype=np.float32)
+            valid = np.zeros(NUM_FRAMES, dtype=bool)
+
+            for frame_index in range(NUM_FRAMES):
+                center = centroid_from_mask(
+                    frame_mask(masks, frame_index, channel_index),
+                    centroid_mode=centroid_mode,
+                    min_mask_pixels=min_mask_pixels,
+                )
+                if center is not None:
+                    centers[frame_index] = center
+                    valid[frame_index] = True
+
+            valid_count = int(valid.sum())
+            is_active = valid_count >= min_valid_count
+            stat: dict[str, Any] = {
+                "channel_index": channel_index,
+                "valid_mask_frames": valid_count,
+                "interpolated_empty_or_invalid_frames": int(NUM_FRAMES - valid_count),
+                "active": is_active,
+                "spike_repaired_frames": 0,
+            }
+
+            if is_active:
+                centers = interpolate_centers(centers, valid, width, height)
+                active_tracks.append((channel_index, centers, valid))
+            else:
+                stat["inactive_reason"] = (
+                    f"valid_frames={valid_count} < min_required={min_valid_count}"
+                )
+
+            channel_stats.append(stat)
+    finally:
+        # Explicitly release the mmap before the next sample is processed.
+        del masks
+
+    if not active_tracks:
+        raise SkipSample(
+            "No mask channel has enough valid centroid frames to render "
+            f"(requires at least {min_valid_count}/{NUM_FRAMES} per channel)."
+        )
+
+    return (
+        active_tracks,
+        channel_stats,
+        total_frames,
+        channels,
+        height,
+        width,
+        original_shape,
+        layout,
+    )
 
 
-def age_color_rgb(ratio: float) -> tuple[int, int, int]:
-    """Same age-color mapping as the supplied renderer, with numeric RGB output."""
-    if ratio <= 1.0 / 3.0:
-        transition = ratio * 3.0
-        r, g, b = 0.0, transition, 1.0 - transition
-    elif ratio <= 2.0 / 3.0:
-        transition = (ratio - 1.0 / 3.0) * 3.0
-        r, g, b = transition, 1.0, 0.0
+def local_median(points: np.ndarray, window: int) -> np.ndarray:
+    """Per-frame local temporal median with edge-value padding."""
+    if window <= 1:
+        return points.astype(np.float32, copy=True)
+
+    radius = window // 2
+    padded = np.pad(points, ((radius, radius), (0, 0)), mode="edge")
+    output = np.empty_like(points, dtype=np.float32)
+    for index in range(points.shape[0]):
+        output[index] = np.median(padded[index:index + window], axis=0)
+    return output
+
+
+def triangular_smooth(points: np.ndarray, window: int) -> np.ndarray:
+    """Symmetric triangular moving average with no causal time lag."""
+    if window <= 1:
+        return points.astype(np.float32, copy=True)
+
+    radius = window // 2
+    ascending = np.arange(1, radius + 2, dtype=np.float32)
+    weights = np.concatenate((ascending, ascending[-2::-1]))
+    weights /= weights.sum()
+
+    padded = np.pad(points, ((radius, radius), (0, 0)), mode="edge")
+    smoothed = np.empty_like(points, dtype=np.float32)
+    for index in range(points.shape[0]):
+        smoothed[index] = np.sum(
+            padded[index:index + window] * weights[:, None],
+            axis=0,
+        )
+    return smoothed
+
+
+def smooth_centers(
+    centers: np.ndarray,
+    width: int,
+    height: int,
+    smooth_window: int,
+    spike_threshold_ratio: float,
+) -> tuple[np.ndarray, np.ndarray]:
+    """Repair isolated outliers and symmetrically smooth a trajectory."""
+    if centers.shape != (NUM_FRAMES, 2):
+        raise ValueError(
+            f"Expected centers shape {(NUM_FRAMES, 2)}, got {centers.shape}."
+        )
+
+    if smooth_window <= 1:
+        return centers.astype(np.float32, copy=True), np.zeros(NUM_FRAMES, dtype=bool)
+
+    repaired = centers.astype(np.float32, copy=True)
+    median_points = local_median(repaired, smooth_window)
+    diagonal = float(np.hypot(width, height))
+
+    if spike_threshold_ratio > 0.0:
+        deviations = np.linalg.norm(repaired - median_points, axis=1)
+        spike_threshold_px = spike_threshold_ratio * diagonal
+        spike_mask = deviations > spike_threshold_px
+        repaired[spike_mask] = median_points[spike_mask]
     else:
-        transition = (ratio - 2.0 / 3.0) * 3.0
-        r, g, b = 1.0, 1.0 - transition, 0.0
+        spike_mask = np.zeros(NUM_FRAMES, dtype=bool)
+
+    smoothed = triangular_smooth(repaired, smooth_window)
+    smoothed[:, 0] = np.clip(smoothed[:, 0], 0.0, float(width - 1))
+    smoothed[:, 1] = np.clip(smoothed[:, 1], 0.0, float(height - 1))
+    return smoothed, spike_mask
+
+
+def single_track_age_color_rgb(ratio: float) -> tuple[int, int, int]:
+    """Legacy single-track colour progression: blue -> green -> yellow -> red."""
+    if ratio <= 1.0 / 3.0:
+        value = ratio * 3.0
+        r, g, b = 0.0, value, 1.0 - value
+    elif ratio <= 2.0 / 3.0:
+        value = (ratio - 1.0 / 3.0) * 3.0
+        r, g, b = value, 1.0, 0.0
+    else:
+        value = (ratio - 2.0 / 3.0) * 3.0
+        r, g, b = 1.0, 1.0 - value, 0.0
     return int(round(r * 255)), int(round(g * 255)), int(round(b * 255))
 
 
-def render_resolution(
-    width: int,
-    height: int,
-    reference_short_side: int = _REF_SHORT_SIDE,
-) -> tuple[int, int, float, float]:
-    """Render on a 1080-short-side canvas, then downsample, matching supplied code."""
+def multi_track_color_rgb(channel_index: int, ratio: float) -> tuple[int, int, int]:
+    """Distinct channel colour with brightness increasing toward the newest point."""
+    base = _TRACK_COLORS_RGB[channel_index % len(_TRACK_COLORS_RGB)]
+    # Keep old trajectory history visible but visually subordinate to the newest
+    # point. This encodes age without conflating channel identity.
+    brightness = 0.26 + 0.74 * float(np.clip(ratio, 0.0, 1.0))
+    return tuple(int(round(component * brightness)) for component in base)
+
+
+def render_resolution(width: int, height: int) -> tuple[int, int, float, float]:
+    """Render with 1080 short-side canvas, then resize to the source resolution."""
     if height <= width:
-        render_width = int(width * reference_short_side / height)
-        render_height = reference_short_side
+        render_height = _REF_SHORT_SIDE
+        render_width = max(1, int(round(width * _REF_SHORT_SIDE / height)))
     else:
-        render_width = reference_short_side
-        render_height = int(height * reference_short_side / width)
+        render_width = _REF_SHORT_SIDE
+        render_height = max(1, int(round(height * _REF_SHORT_SIDE / width)))
+
     return (
         render_width,
         render_height,
-        render_width / width,
-        render_height / height,
+        render_width / float(width),
+        render_height / float(height),
     )
 
 
 def generate_track_frames(
-    tracks: Sequence[Sequence[dict[str, int]]],
+    smoothed_tracks: list[tuple[int, np.ndarray]],
+    total_mask_channels: int,
     width: int,
     height: int,
+    cancel_event: threading.Event,
 ) -> Iterator[np.ndarray]:
-    """Generate sparse-track frames using the same RGB/BGR convention as supplied code."""
-    if not tracks or any(len(track) == 0 for track in tracks):
-        raise ValueError("tracks must contain at least one non-empty trajectory.")
+    """Render all active mask-channel trajectories into one black RGB video."""
+    if not smoothed_tracks:
+        raise ValueError("At least one active track is required for rendering.")
 
     render_width, render_height, scale_x, scale_y = render_resolution(width, height)
-    num_frames = max(len(track) for track in tracks)
+    render_tracks: list[tuple[int, np.ndarray]] = []
+    for channel_index, centers in smoothed_tracks:
+        if centers.shape != (NUM_FRAMES, 2):
+            raise ValueError(
+                f"Channel {channel_index} has invalid centers shape {centers.shape}; "
+                f"expected {(NUM_FRAMES, 2)}."
+            )
+        scaled = centers.astype(np.float32, copy=True)
+        scaled[:, 0] *= scale_x
+        scaled[:, 1] *= scale_y
+        render_tracks.append((channel_index, scaled))
 
-    scaled_tracks: list[list[dict[str, float]]] = []
-    for track in tracks:
-        scaled_tracks.append(
-            [
-                {"x": point["x"] * scale_x, "y": point["y"] * scale_y}
-                for point in track
-            ]
-        )
+    use_legacy_single_track_colour = total_mask_channels == 1 and len(render_tracks) == 1
 
-    for frame_index in range(num_frames):
-        # OpenCV writes raw array channel values; numerically this array is RGB.
-        highres_rgb = np.zeros((render_height, render_width, 3), dtype=np.uint8)
+    for frame_index in range(NUM_FRAMES):
+        if cancel_event.is_set():
+            raise BatchCancelled("Batch cancellation requested.")
+
+        canvas_rgb = np.zeros((render_height, render_width, 3), dtype=np.uint8)
         trail_start = max(0, frame_index - _MAX_TRAIL)
 
-        for track in scaled_tracks:
-            end_index = min(frame_index, len(track) - 1)
-            for point_index in range(trail_start, end_index + 1):
-                point = track[point_index]
+        # Draw one trajectory at a time. Within each one, old points are painted
+        # first and newer points are painted last, keeping the latest location
+        # prominent. Channel order is deterministic and follows input channel id.
+        for channel_index, centers in render_tracks:
+            for point_index in range(trail_start, frame_index + 1):
+                x = int(round(float(centers[point_index, 0])))
+                y = int(round(float(centers[point_index, 1])))
+                if not (0 <= x < render_width and 0 <= y < render_height):
+                    continue
+
                 age = frame_index - point_index
-                ratio = float(np.clip(1.0 - age / _MAX_TRAIL, 0.0, 1.0))
+                ratio = float(np.clip(1.0 - age / float(_MAX_TRAIL), 0.0, 1.0))
                 radius = max(
                     1,
                     int(round(_MIN_RADIUS + (_MAX_RADIUS - _MIN_RADIUS) * ratio)),
                 )
-                x = int(round(point["x"]))
-                y = int(round(point["y"]))
-                if not (0 <= x < render_width and 0 <= y < render_height):
-                    continue
-
+                color = (
+                    single_track_age_color_rgb(ratio)
+                    if use_legacy_single_track_colour
+                    else multi_track_color_rgb(channel_index, ratio)
+                )
+                # canvas_rgb is raw RGB byte storage. FFmpeg receives it with
+                # -pix_fmt rgb24, so no OpenCV BGR conversion is performed here.
                 cv2.circle(
-                    highres_rgb,
+                    canvas_rgb,
                     center=(x, y),
                     radius=radius,
-                    color=age_color_rgb(ratio),
+                    color=color,
                     thickness=-1,
                     lineType=cv2.LINE_8,
                 )
 
-        frame_rgb = cv2.resize(
-            highres_rgb,
+        yield cv2.resize(
+            canvas_rgb,
             (width, height),
             interpolation=cv2.INTER_LINEAR,
         )
 
-        # This channel swap is deliberately retained from the user-provided LTX-compatible code.
-        yield frame_rgb[..., [2, 1, 0]].copy()
+
+def tail_text(path: Path, max_bytes: int = 16_384) -> str:
+    """Read a bounded FFmpeg stderr tail without pipe-buffer deadlock risk."""
+    if not path.exists():
+        return "<FFmpeg did not create an error log.>"
+    try:
+        with path.open("rb") as handle:
+            handle.seek(0, os.SEEK_END)
+            size = handle.tell()
+            handle.seek(max(0, size - max_bytes), os.SEEK_SET)
+            return handle.read().decode("utf-8", errors="replace").strip()
+    except OSError as exc:
+        return f"<Could not read FFmpeg log: {exc}>"
+
+
+def make_temp_output_path(output_path: Path) -> Path:
+    token = uuid.uuid4().hex
+    return output_path.with_name(
+        f".{output_path.stem}.partial-{os.getpid()}-{token}{output_path.suffix}"
+    )
 
 
 def save_h264_video(
@@ -465,160 +661,452 @@ def save_h264_video(
     output_path: Path,
     width: int,
     height: int,
-    fps: float,
+    fps: int,
+    ffmpeg_threads: int,
+    timeout_seconds: float,
+    cancel_event: threading.Event,
+    process_registry: ActiveProcessRegistry,
 ) -> None:
-    """Write an LTX-safe H.264 MP4 with a black background and faithful track colors.
-
-    Important:
-    - ``generate_track_frames`` returns the *numerical RGB bytes expected by the
-      Motion-Track IC-LoRA* (it already performs the required RGB -> BGR swap).
-    - Do not use ``libx264rgb`` here. That encoder commonly stores the stream as
-      planar GBR (``gbrp``). Although technically valid, some players and video
-      readers display such MP4s with a green cast/background.
-    - Encode standard YUV H.264 instead. ``yuv444p`` preserves the tiny blue /
-      green / yellow / red trajectory markers far better than yuv420p, while LTX
-      decodes the video through PyAV and converts every frame back to RGB.
-    """
-    if shutil.which("ffmpeg") is None:
-        raise RuntimeError("ffmpeg was not found on PATH. Please install FFmpeg first.")
+    """Encode a video safely; only promote the temporary file after success."""
+    if cancel_event.is_set():
+        raise BatchCancelled("Batch cancellation requested before FFmpeg start.")
 
     output_path.parent.mkdir(parents=True, exist_ok=True)
-    temporary_path = output_path.with_name(f"{output_path.stem}.tmp{output_path.suffix}")
+    temp_output_path = make_temp_output_path(output_path)
 
-    command = [
-        "ffmpeg", "-y", "-hide_banner", "-loglevel", "error",
-        # ``frames`` are raw numerical RGB bytes. Keep this declaration as RGB24;
-        # changing it to BGR24 would undo the Motion-Track channel convention.
-        "-f", "rawvideo",
-        "-pix_fmt", "rgb24",
-        "-s", f"{width}x{height}",
-        "-r", str(fps),
-        "-i", "-",
-        "-an",
-        # Standard YUV H.264, not planar-RGB H.264 (gbrp).
-        "-c:v", "libx264",
-        "-preset", "medium",
-        "-crf", "0",
-        "-profile:v", "high444",
-        "-pix_fmt", "yuv444p",
-        "-colorspace", "bt709",
-        "-color_primaries", "bt709",
-        "-color_trc", "bt709",
-        "-color_range", "tv",
-        "-movflags", "+faststart",
-        str(temporary_path),
-    ]
+    # yuv420p requires even spatial dimensions. For an odd H/W mask, retain the
+    # exact shape using yuv444p instead of silently resizing or padding.
+    if width % 2 == 0 and height % 2 == 0:
+        out_pix_fmt = "yuv420p"
+        profile = "high"
+    else:
+        out_pix_fmt = "yuv444p"
+        profile = "high444"
 
-    process = subprocess.Popen(command, stdin=subprocess.PIPE, stderr=subprocess.PIPE)
+    stderr_log_path: Path | None = None
+    process: subprocess.Popen[Any] | None = None
+    watchdog: threading.Timer | None = None
+    timeout_triggered = threading.Event()
+    success = False
+
     try:
-        assert process.stdin is not None
-        for frame in frames:
-            if frame.dtype != np.uint8 or frame.shape != (height, width, 3):
-                raise ValueError(
-                    f"Invalid rendered frame: expected uint8 {(height, width, 3)}, "
-                    f"got {frame.dtype} {frame.shape}"
-                )
-            process.stdin.write(frame.tobytes())
-        process.stdin.close()
-        assert process.stderr is not None
-        stderr = process.stderr.read().decode("utf-8", errors="replace")
-        return_code = process.wait()
-    except Exception:
-        if process.stdin is not None and not process.stdin.closed:
-            process.stdin.close()
-        process.kill()
-        process.wait()
-        temporary_path.unlink(missing_ok=True)
-        raise
+        with tempfile.NamedTemporaryFile(
+            mode="wb",
+            prefix=".motion_ffmpeg_",
+            suffix=".log",
+            dir=output_path.parent,
+            delete=False,
+        ) as log_handle:
+            stderr_log_path = Path(log_handle.name)
+            command = [
+                "ffmpeg",
+                "-y",
+                "-nostdin",
+                "-hide_banner",
+                "-loglevel",
+                "error",
+                "-f",
+                "rawvideo",
+                "-pix_fmt",
+                "rgb24",
+                "-s",
+                f"{width}x{height}",
+                "-r",
+                str(fps),
+                "-i",
+                "-",
+                "-an",
+                "-c:v",
+                "libx264",
+                "-preset",
+                "medium",
+                "-crf",
+                "10",
+                "-threads",
+                str(ffmpeg_threads),
+                "-profile:v",
+                profile,
+                "-pix_fmt",
+                out_pix_fmt,
+                "-movflags",
+                "+faststart",
+                "-frames:v",
+                str(NUM_FRAMES),
+                str(temp_output_path),
+            ]
+            process = subprocess.Popen(
+                command,
+                stdin=subprocess.PIPE,
+                stdout=subprocess.DEVNULL,
+                stderr=log_handle,
+            )
+            process_registry.add(process)
 
-    if return_code != 0:
-        temporary_path.unlink(missing_ok=True)
-        raise RuntimeError(f"FFmpeg H.264 encoding failed (code={return_code}):\n{stderr}")
+            def kill_if_timed_out() -> None:
+                if process is not None and process.poll() is None:
+                    timeout_triggered.set()
+                    try:
+                        process.kill()
+                    except (ProcessLookupError, OSError):
+                        pass
 
-    temporary_path.replace(output_path)
+            watchdog = threading.Timer(timeout_seconds, kill_if_timed_out)
+            watchdog.daemon = True
+            watchdog.start()
+
+            assert process.stdin is not None
+            frames_written = 0
+            pipe_broken = False
+            try:
+                for frame in frames:
+                    if cancel_event.is_set():
+                        raise BatchCancelled("Batch cancellation requested during encoding.")
+                    if timeout_triggered.is_set():
+                        raise TimeoutError(
+                            f"FFmpeg exceeded {timeout_seconds:.1f} seconds."
+                        )
+                    if frame.shape != (height, width, 3):
+                        raise ValueError(
+                            f"Frame shape mismatch: expected {(height, width, 3)}, "
+                            f"got {frame.shape}."
+                        )
+                    if frame.dtype != np.uint8:
+                        raise ValueError(f"Expected uint8 frame, got {frame.dtype}.")
+                    process.stdin.write(frame.tobytes())
+                    frames_written += 1
+            except BrokenPipeError:
+                pipe_broken = True
+            finally:
+                try:
+                    process.stdin.close()
+                except (BrokenPipeError, OSError):
+                    pass
+
+            # Do not call communicate() after closing stdin manually. Polling in
+            # short intervals lets Ctrl+C and the watchdog kill be observed fast.
+            while process.poll() is None:
+                if cancel_event.is_set() or timeout_triggered.is_set():
+                    try:
+                        process.kill()
+                    except (ProcessLookupError, OSError):
+                        pass
+                try:
+                    process.wait(timeout=0.25)
+                except subprocess.TimeoutExpired:
+                    continue
+
+            return_code = process.returncode
+
+        if timeout_triggered.is_set():
+            details = tail_text(stderr_log_path) if stderr_log_path else ""
+            raise TimeoutError(
+                f"FFmpeg exceeded {timeout_seconds:.1f} seconds and was killed.\n{details}"
+            )
+        if cancel_event.is_set():
+            raise BatchCancelled("Batch cancellation requested.")
+        if return_code != 0:
+            details = tail_text(stderr_log_path) if stderr_log_path else ""
+            raise RuntimeError(f"FFmpeg encoding failed (code {return_code}):\n{details}")
+        if frames_written != NUM_FRAMES or pipe_broken:
+            raise RuntimeError(
+                "FFmpeg did not receive all frames: "
+                f"received={frames_written}, expected={NUM_FRAMES}."
+            )
+
+        os.replace(temp_output_path, output_path)
+        success = True
+
+    finally:
+        if watchdog is not None:
+            watchdog.cancel()
+
+        if process is not None:
+            process_registry.discard(process)
+            if process.poll() is None:
+                try:
+                    process.kill()
+                except (ProcessLookupError, OSError):
+                    pass
+                try:
+                    process.wait(timeout=5.0)
+                except subprocess.TimeoutExpired:
+                    pass
+
+        if not success:
+            try:
+                temp_output_path.unlink(missing_ok=True)
+            except OSError:
+                pass
+
+        if stderr_log_path is not None:
+            try:
+                stderr_log_path.unlink(missing_ok=True)
+            except OSError:
+                pass
 
 
-def process_job(job: Job, args: argparse.Namespace) -> str:
-    if job.output_path.exists() and not args.overwrite:
-        return "skipped"
+def process_sample(
+    mask_path: Path,
+    args: argparse.Namespace,
+    cancel_event: threading.Event,
+    process_registry: ActiveProcessRegistry,
+) -> dict[str, Any]:
+    """Render one multi-track sibling motion.mp4 from one masks.npy file."""
+    if cancel_event.is_set():
+        raise BatchCancelled("Batch cancellation requested before processing.")
 
-    bboxes = load_raw_xyxy_bboxes(job.bbox_path)
-    mask_frames, height, width = read_masks_video_shape(job.masks_path)
+    output_path = mask_path.parent / args.output_name
+    if args.keep_existing and output_path.exists():
+        raise SkipSample(f"{args.output_name} already exists.")
 
-    if len(bboxes) != mask_frames:
-        raise ValueError(
-            "Temporal mismatch: bbox.npy and masks.npy must describe the same original video. "
-            f"bbox T={len(bboxes)}, masks T={mask_frames}. "
-            f"bbox={job.bbox_path}, masks={job.masks_path}"
-        )
-
-    valid = valid_raw_xyxy_mask(bboxes)
-    validate_raw_xyxy_against_image(bboxes, valid, width, height, job.bbox_path)
-    centers = raw_xyxy_to_centers(bboxes, valid, width, height)
-
-    output_frames = len(centers) if args.num_frames == 0 else args.num_frames
-    centers = resample_centers(centers, output_frames)
-    tracks = [centers_to_track(centers, width, height)]
-
-    save_h264_video(
-        frames=generate_track_frames(tracks, width, height),
-        output_path=job.output_path,
-        width=width,
-        height=height,
-        fps=args.fps,
+    (
+        active_tracks,
+        channel_stats,
+        total_frames,
+        channels,
+        height,
+        width,
+        mask_shape,
+        mask_layout,
+    ) = extract_mask_tracks(
+        mask_path=mask_path,
+        centroid_mode=args.centroid_mode,
+        min_mask_pixels=args.min_mask_pixels,
+        min_valid_ratio=args.min_valid_ratio,
     )
 
-    if args.save_json:
-        job.output_path.with_suffix(".json").write_text(
-            json.dumps(
-                {
-                    "bbox_format": "xyxy",
-                    "bbox_coordinate_space": "raw_pixel",
-                    "source_size": {"width": width, "height": height},
-                    "num_frames": len(tracks[0]),
-                    "tracks": tracks,
-                },
-                indent=2,
-            ),
-            encoding="utf-8",
+    smoothed_tracks: list[tuple[int, np.ndarray]] = []
+    total_spikes = 0
+    stat_by_channel = {int(stat["channel_index"]): stat for stat in channel_stats}
+    for channel_index, centers, _valid in active_tracks:
+        smoothed_centers, spike_mask = smooth_centers(
+            centers=centers,
+            width=width,
+            height=height,
+            smooth_window=args.smooth_window,
+            spike_threshold_ratio=args.spike_threshold_ratio,
         )
-    return "created"
+        stat_by_channel[channel_index]["spike_repaired_frames"] = int(spike_mask.sum())
+        total_spikes += int(spike_mask.sum())
+        smoothed_tracks.append((channel_index, smoothed_centers))
+
+    save_h264_video(
+        frames=generate_track_frames(
+            smoothed_tracks=smoothed_tracks,
+            total_mask_channels=channels,
+            width=width,
+            height=height,
+            cancel_event=cancel_event,
+        ),
+        output_path=output_path,
+        width=width,
+        height=height,
+        fps=FPS,
+        ffmpeg_threads=args.ffmpeg_threads,
+        timeout_seconds=args.ffmpeg_timeout_seconds,
+        cancel_event=cancel_event,
+        process_registry=process_registry,
+    )
+
+    active_channel_indices = [channel_index for channel_index, _ in smoothed_tracks]
+    return {
+        "mask_shape": mask_shape,
+        "mask_layout": mask_layout,
+        "mask_total_frames": total_frames,
+        "mask_channels": channels,
+        "active_tracks": len(smoothed_tracks),
+        "active_channel_indices": active_channel_indices,
+        "inactive_tracks": channels - len(smoothed_tracks),
+        "width": width,
+        "height": height,
+        "channel_stats": channel_stats,
+        "valid_mask_centers": int(
+            sum(int(stat["valid_mask_frames"]) for stat in channel_stats)
+        ),
+        "interpolated_empty_or_invalid_frames": int(
+            sum(int(stat["interpolated_empty_or_invalid_frames"]) for stat in channel_stats)
+        ),
+        "spike_repaired_frames": total_spikes,
+    }
 
 
-def main() -> int:
-    args = parse_args()
-    try:
-        jobs = collect_jobs(args)
-    except Exception as exc:
-        print(f"[ERROR] {exc}", file=sys.stderr)
-        return 2
-
-    created = 0
-    skipped = 0
-    failures: list[tuple[Job, Exception]] = []
-
-    iterator = tqdm(jobs, desc="Rendering trackers", unit="sample") if tqdm else jobs
-    for job in iterator:
+def submit_until_full(
+    executor: ThreadPoolExecutor,
+    pending: dict[Future[Any], Path],
+    paths_iterator: Iterator[Path],
+    max_in_flight: int,
+    args: argparse.Namespace,
+    cancel_event: threading.Event,
+    process_registry: ActiveProcessRegistry,
+) -> bool:
+    """Keep only a bounded number of submitted-but-unfinished jobs."""
+    more_paths_exist = True
+    while len(pending) < max_in_flight:
         try:
-            result = process_job(job, args)
-            if result == "created":
-                created += 1
-            else:
-                skipped += 1
-        except Exception as exc:
-            failures.append((job, exc))
-            print(f"\n[FAILED] {job.label}\n  {exc}", file=sys.stderr)
-            if args.fail_fast:
-                break
+            mask_path = next(paths_iterator)
+        except StopIteration:
+            more_paths_exist = False
+            break
 
-    print(f"\nDone. created={created}, skipped={skipped}, failed={len(failures)}")
-    if failures:
-        print("Failed samples:", file=sys.stderr)
-        for job, exc in failures:
-            print(f"- {job.bbox_path}: {exc}", file=sys.stderr)
-        return 1
-    return 0
+        future = executor.submit(
+            process_sample,
+            mask_path,
+            args,
+            cancel_event,
+            process_registry,
+        )
+        pending[future] = mask_path
+    return more_paths_exist
+
+
+def main() -> None:
+    args = parse_args()
+    parent_dir = args.parent_dir.expanduser().resolve()
+
+    if not parent_dir.is_dir():
+        raise SystemExit(f"Not a directory: {parent_dir}")
+    if shutil.which("ffmpeg") is None:
+        raise SystemExit("ffmpeg was not found in PATH. Please install FFmpeg first.")
+
+    mask_paths = sorted(path for path in parent_dir.rglob("masks.npy") if path.is_file())
+    if not mask_paths:
+        raise SystemExit(f"No masks.npy files found below: {parent_dir}")
+
+    # Avoid nested OpenCV pools inside every Python worker thread.
+    try:
+        cv2.setNumThreads(1)
+    except cv2.error:
+        pass
+
+    workers = args.workers
+    max_in_flight = args.max_in_flight or workers * 2
+    max_in_flight = max(workers, max_in_flight)
+
+    saved = 0
+    skipped = 0
+    failed = 0
+    cancelled = 0
+    total_input_channels = 0
+    total_active_tracks = 0
+    total_inactive_tracks = 0
+    total_valid_centers = 0
+    total_interpolated = 0
+    total_spikes_repaired = 0
+
+    cancel_event = threading.Event()
+    process_registry = ActiveProcessRegistry()
+    pending: dict[Future[Any], Path] = {}
+    paths_iterator = iter(mask_paths)
+    executor = ThreadPoolExecutor(
+        max_workers=workers,
+        thread_name_prefix="mask-motion-render",
+    )
+
+    start_time = time.perf_counter()
+    interrupted = False
+
+    try:
+        submit_until_full(
+            executor,
+            pending,
+            paths_iterator,
+            max_in_flight,
+            args,
+            cancel_event,
+            process_registry,
+        )
+
+        with tqdm(
+            total=len(mask_paths),
+            desc="Rendering multi-track motion.mp4",
+            unit="sample",
+            dynamic_ncols=True,
+        ) as progress:
+            while pending:
+                done, _ = wait(pending, return_when=FIRST_COMPLETED)
+
+                # Main thread owns every tqdm operation. Each completed Future
+                # moves the bar exactly once, regardless of success/failure/skip.
+                for future in done:
+                    mask_path = pending.pop(future)
+                    try:
+                        result = future.result()
+                        saved += 1
+                        total_input_channels += int(result["mask_channels"])
+                        total_active_tracks += int(result["active_tracks"])
+                        total_inactive_tracks += int(result["inactive_tracks"])
+                        total_valid_centers += int(result["valid_mask_centers"])
+                        total_interpolated += int(
+                            result["interpolated_empty_or_invalid_frames"]
+                        )
+                        total_spikes_repaired += int(result["spike_repaired_frames"])
+                    except SkipSample as exc:
+                        skipped += 1
+                        tqdm.write(f"[SKIP] {mask_path.parent}: {exc}")
+                    except BatchCancelled:
+                        cancelled += 1
+                    except Exception as exc:
+                        failed += 1
+                        tqdm.write(
+                            f"[FAIL] {mask_path.parent}: "
+                            f"{type(exc).__name__}: {exc}"
+                        )
+                    finally:
+                        progress.update(1)
+
+                    progress.set_postfix(
+                        saved=saved,
+                        skipped=skipped,
+                        failed=failed,
+                        tracks=total_active_tracks,
+                        inactive=total_inactive_tracks,
+                        spikes=total_spikes_repaired,
+                    )
+
+                submit_until_full(
+                    executor,
+                    pending,
+                    paths_iterator,
+                    max_in_flight,
+                    args,
+                    cancel_event,
+                    process_registry,
+                )
+
+    except KeyboardInterrupt:
+        interrupted = True
+        cancel_event.set()
+        process_registry.terminate_all()
+        for future in pending:
+            future.cancel()
+        executor.shutdown(wait=True, cancel_futures=True)
+        print("\nInterrupted: active FFmpeg processes were terminated and queued jobs cancelled.")
+    finally:
+        if not interrupted:
+            executor.shutdown(wait=True, cancel_futures=False)
+
+    elapsed = time.perf_counter() - start_time
+    print("\nDone." if not interrupted else "\nStopped.")
+    print(f"Parent directory       : {parent_dir}")
+    print(f"masks.npy found        : {len(mask_paths)}")
+    print(f"Videos written         : {saved}")
+    print(f"Skipped                : {skipped}")
+    print(f"Failed                 : {failed}")
+    if cancelled:
+        print(f"Cancelled              : {cancelled}")
+    print(f"Centroid mode          : {args.centroid_mode}")
+    print(f"Input mask channels    : {total_input_channels}")
+    print(f"Rendered trajectories  : {total_active_tracks}")
+    print(f"Omitted weak channels  : {total_inactive_tracks}")
+    print(f"Valid mask centers     : {total_valid_centers}")
+    print(f"Interpolated frames    : {total_interpolated}")
+    print(f"Repaired spike frames  : {total_spikes_repaired}")
+    print(f"Workers                : {workers} (FFmpeg threads/worker={args.ffmpeg_threads})")
+    print(f"Elapsed                : {elapsed:.2f}s")
+
+    if interrupted:
+        raise SystemExit(130)
 
 
 if __name__ == "__main__":
-    raise SystemExit(main())
+    main()
