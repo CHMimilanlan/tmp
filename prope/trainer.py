@@ -433,8 +433,43 @@ class LtxvTrainer:
             checkpoint_path=self._config.model.model_path,
             device="cpu",
             dtype=torch.bfloat16,
-            use_track_prope=self.use_track_prope
+            # use_track_prope=self.use_track_prope
         )
+
+        if self.use_track_prope:
+            initialized_blocks = 0
+            transformer_blocks = getattr(
+                self._transformer,
+                "transformer_blocks",
+                None,
+            )
+            if transformer_blocks is None:
+                raise RuntimeError(
+                    "Track-PRoPE is enabled, but the loaded transformer "
+                    "does not contain transformer_blocks."
+                )
+
+            for block_index, block in enumerate(transformer_blocks):
+                if not hasattr(block, "initialize_track_prope"):
+                    raise RuntimeError(
+                        f"Transformer block {block_index} does not implement "
+                        "initialize_track_prope(). Make sure the modified "
+                        "transformer.py is being imported."
+                    )
+                block.initialize_track_prope(
+                    device=torch.device("cpu"),
+                    dtype=torch.bfloat16,
+                    adapter_dim=512,
+                    num_heads=8,
+                    matrix_scale=0.5,
+                )
+                if block.audio_track_prope is not None:
+                    initialized_blocks += 1
+            logger.info(
+                "Track-PRoPE initialized in "
+                f"{initialized_blocks}/{len(transformer_blocks)} transformer blocks."
+            )
+
 
         # ---------------------------------------------------------
         # Optionally initialize SpatialTrackEncoder
@@ -591,6 +626,42 @@ class LtxvTrainer:
         )
 
         base_model = self._transformer.get_base_model()
+
+        if self.use_track_prope:
+            track_prope_module_count = 0
+            track_prope_trainable_params = 0
+
+            for block in base_model.transformer_blocks:
+                track_prope = getattr(
+                    block,
+                    "audio_track_prope",
+                    None,
+                )
+
+                if track_prope is None:
+                    continue
+
+                track_prope.requires_grad_(True)
+                track_prope_module_count += 1
+
+                track_prope_trainable_params += sum(
+                    parameter.numel()
+                    for parameter in track_prope.parameters()
+                    if parameter.requires_grad
+                )
+
+            if track_prope_module_count == 0:
+                raise RuntimeError(
+                    "use_track_prope=true, but no Track-PRoPE modules "
+                    "were found after PEFT wrapping."
+                )
+
+            logger.info(
+                "Trainable Track-PRoPE modules: "
+                f"{track_prope_module_count}; parameters: "
+                f"{track_prope_trainable_params:,}"
+            )
+
 
         if has_spatial_track_encoder:
             spatial_track_encoder = getattr(
@@ -867,6 +938,12 @@ class LtxvTrainer:
 
     def _prepare_models_for_training(self) -> None:
         """Prepare models for training with Accelerate."""
+
+        self._assert_no_meta_tensors(
+            self._transformer,
+            stage="accelerator.prepare()",
+        )
+
 
         if (
             self._accelerator.distributed_type == DistributedType.FSDP
@@ -1807,3 +1884,44 @@ class LtxvTrainer:
             ".lora_A.weight",
             ".lora_B.weight",
         ))
+
+
+
+    def _assert_no_meta_tensors(
+        self,
+        model: torch.nn.Module,
+        *,
+        stage: str,
+    ) -> None:
+        meta_parameters = [
+            name
+            for name, parameter in model.named_parameters()
+            if parameter.is_meta
+        ]
+
+        meta_buffers = [
+            name
+            for name, buffer in model.named_buffers()
+            if buffer.is_meta
+        ]
+
+        if meta_parameters or meta_buffers:
+            lines = [
+                f"Model still contains meta tensors before {stage}.",
+            ]
+
+            if meta_parameters:
+                lines.append("Meta parameters:")
+                lines.extend(
+                    f"  - {name}"
+                    for name in meta_parameters[:100]
+                )
+
+            if meta_buffers:
+                lines.append("Meta buffers:")
+                lines.extend(
+                    f"  - {name}"
+                    for name in meta_buffers[:100]
+                )
+
+            raise RuntimeError("\n".join(lines))
