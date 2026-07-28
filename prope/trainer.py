@@ -591,18 +591,11 @@ class LtxvTrainer:
         self._timestep_sampler = sampler_cls(**self._config.flow_matching.timestep_sampling_params)
 
     def _setup_lora(self) -> None:
-        """Configure LoRA adapters for the transformer."""
-
         if self._config.lora is None:
             raise ValueError(
                 "LoRA configuration is required in LoRA training mode."
             )
-
-        logger.debug(
-            f"Adding LoRA adapter with rank "
-            f"{self._config.lora.rank}"
-        )
-
+    
         has_spatial_track_encoder = (
             getattr(
                 self._transformer,
@@ -611,104 +604,49 @@ class LtxvTrainer:
             )
             is not None
         )
-
-        # lora_config = LoraConfig(
-        #     r=self._config.lora.rank,
-        #     lora_alpha=self._config.lora.alpha,
-        #     target_modules=self._config.lora.target_modules,
-        #     lora_dropout=self._config.lora.dropout,
-        #     init_lora_weights=True,
-        # )
-        if has_spatial_track_encoder:
-            modules_to_save = ["spatial_track_encoder"]
+    
+        # 不使用 modules_to_save
         lora_config = LoraConfig(
             r=self._config.lora.rank,
             lora_alpha=self._config.lora.alpha,
             target_modules=self._config.lora.target_modules,
             lora_dropout=self._config.lora.dropout,
             init_lora_weights=True,
-            modules_to_save=modules_to_save,
         )
-
-
+    
         self._transformer = get_peft_model(
             self._transformer,
             lora_config,
         )
-
+    
         base_model = self._transformer.get_base_model()
-
-        if self.use_track_prope:
-            track_prope_module_count = 0
-            track_prope_trainable_params = 0
-
-            for block in base_model.transformer_blocks:
-                track_prope = getattr(
-                    block,
-                    "audio_track_prope",
-                    None,
-                )
-
-                if track_prope is None:
-                    continue
-
-                track_prope.requires_grad_(True)
-                track_prope_module_count += 1
-
-                track_prope_trainable_params += sum(
-                    parameter.numel()
-                    for parameter in track_prope.parameters()
-                    if parameter.requires_grad
-                )
-
-            if track_prope_module_count == 0:
-                raise RuntimeError(
-                    "use_track_prope=true, but no Track-PRoPE modules "
-                    "were found after PEFT wrapping."
-                )
-
-            logger.info(
-                "Trainable Track-PRoPE modules: "
-                f"{track_prope_module_count}; parameters: "
-                f"{track_prope_trainable_params:,}"
-            )
-
-
+    
         if has_spatial_track_encoder:
-            spatial_track_encoder = getattr(
-                base_model,
-                "spatial_track_encoder",
-                None,
-            )
-
-            if spatial_track_encoder is None:
+            spatial_track_encoder = base_model.spatial_track_encoder
+    
+            # 此时它应当还是原始 SpatialTrackEncoder，
+            # 而不是 ModulesToSaveWrapper。
+            if isinstance(
+                spatial_track_encoder,
+                ModulesToSaveWrapper,
+            ):
                 raise RuntimeError(
-                    "SpatialTrackEncoder disappeared after PEFT wrapping."
+                    "SpatialTrackEncoder should not be wrapped by "
+                    "ModulesToSaveWrapper."
                 )
-
+    
             spatial_track_encoder.requires_grad_(True)
-
-            trainable_custom_params = sum(
-                parameter.numel()
-                for parameter in spatial_track_encoder.parameters()
-                if parameter.requires_grad
+    
+            trainable_params = sum(
+                p.numel()
+                for p in spatial_track_encoder.parameters()
+                if p.requires_grad
             )
-
+    
             logger.info(
                 "Trainable SpatialTrackEncoder params: "
-                f"{trainable_custom_params:,}"
-            )
-
-            if trainable_custom_params == 0:
-                raise RuntimeError(
-                    "SpatialTrackEncoder is frozen after PEFT wrapping."
-                )
-        else:
-            logger.info(
-                "SpatialTrackEncoder is disabled; "
-                "only LoRA parameters will be trained."
-            )
-            
+                f"{trainable_params:,}"
+            )            
 
     def _load_checkpoint(self) -> None:
         """Load checkpoint if specified in config, then resolve resume state."""
@@ -1409,66 +1347,149 @@ class LtxvTrainer:
             stats_str += f" - Global batch size: {stats.global_batch_size}"
         logger.info(stats_str)
 
+
     def _save_checkpoint(self) -> Path | None:
-        """Save the model weights."""
-        is_lora = self._config.model.training_mode == "lora"
-        is_fsdp = self._accelerator.distributed_type == DistributedType.FSDP
-
-        # Prepare paths
-        save_dir = Path(self._config.output_dir) / "checkpoints"
-        prefix = "lora" if is_lora else "model"
-        filename = f"{prefix}_weights_step_{self._global_step:05d}.safetensors"
-        saved_weights_path = save_dir / filename
-
-        # Get state dict (collective operation - all processes must participate)
+        is_lora = (
+            self._config.model.training_mode == "lora"
+        )
+        is_fsdp = (
+            self._accelerator.distributed_type
+            == DistributedType.FSDP
+        )
+    
+        save_dir = (
+            Path(self._config.output_dir)
+            / "checkpoints"
+        )
+    
+        lora_path = (
+            save_dir
+            / f"lora_weights_step_{self._global_step:05d}.safetensors"
+        )
+    
+        spatial_path = (
+            save_dir
+            / f"spatial_track_encoder_step_{self._global_step:05d}.safetensors"
+        )
+    
+        # 所有 rank 共同参加唯一一次 state-dict collective
         self._accelerator.wait_for_everyone()
-        full_state_dict = self._accelerator.get_state_dict(self._transformer)
-
-        if not IS_MAIN_PROCESS:
+    
+        full_state_dict = self._accelerator.get_state_dict(
+            self._transformer
+        )
+    
+        if not self._accelerator.is_main_process:
             return None
-
-        save_dir.mkdir(exist_ok=True, parents=True)
-
-        # Determine save precision
-        save_dtype = torch.bfloat16 if self._config.checkpoints.precision == "bfloat16" else torch.float32
-
-        # For LoRA: extract only adapter weights; for full: use as-is
-        if is_lora:
-            unwrapped = self._accelerator.unwrap_model(self._transformer, keep_torch_compile=False)
-            # For FSDP, pass full_state_dict since model params aren't directly accessible
-            state_dict = get_peft_model_state_dict(unwrapped, state_dict=full_state_dict if is_fsdp else None)
-
-            # Remove "base_model.model." prefix added by PEFT
-            state_dict = {k.replace("base_model.model.", "", 1): v for k, v in state_dict.items()}
-
-            # Convert to ComfyUI-compatible format (add "diffusion_model." prefix)
-            state_dict = {f"diffusion_model.{k}": v for k, v in state_dict.items()}
-
-            # Cast to configured precision
-            state_dict = {k: v.to(save_dtype) if isinstance(v, Tensor) else v for k, v in state_dict.items()}
-
-            # Build metadata for safetensors file
-            metadata = self._build_checkpoint_metadata()
-
-            # Save to disk with metadata
-            save_file(state_dict, saved_weights_path, metadata=metadata)
-        else:
-            # Cast to configured precision
-            full_state_dict = {k: v.to(save_dtype) if isinstance(v, Tensor) else v for k, v in full_state_dict.items()}
-
-            # Save to disk
-            self._accelerator.save(full_state_dict, saved_weights_path)
-
-        rel_path = saved_weights_path.relative_to(self._config.output_dir)
-        logger.info(f"💾 {prefix.capitalize()} weights for step {self._global_step} saved in {rel_path}")
-
-        self._checkpoint_paths.append(saved_weights_path)
-        self._cleanup_checkpoints()
-
+    
+        save_dir.mkdir(
+            exist_ok=True,
+            parents=True,
+        )
+    
+        save_dtype = (
+            torch.bfloat16
+            if self._config.checkpoints.precision == "bfloat16"
+            else torch.float32
+        )
+    
+        # 现在没有 ModulesToSaveWrapper，因此这一步只筛选 LoRA
+        unwrapped = self._accelerator.unwrap_model(
+            self._transformer,
+            keep_torch_compile=False,
+        )
+    
+        lora_state_dict = get_peft_model_state_dict(
+            unwrapped,
+            state_dict=full_state_dict if is_fsdp else None,
+        )
+    
+        lora_state_dict = {
+            key.replace(
+                "base_model.model.",
+                "",
+                1,
+            ): value
+            for key, value in lora_state_dict.items()
+        }
+    
+        lora_state_dict = {
+            f"diffusion_model.{key}": (
+                value.detach()
+                .to(
+                    device="cpu",
+                    dtype=save_dtype,
+                )
+                .contiguous()
+            )
+            for key, value in lora_state_dict.items()
+        }
+    
+        save_file(
+            lora_state_dict,
+            lora_path,
+            metadata=self._build_checkpoint_metadata(),
+        )
+    
+        # 只从已经收集完成的 full_state_dict 中筛选，
+        # 不再调用 spatial_track_encoder.state_dict()
+        spatial_state_dict = {}
+    
+        marker = "spatial_track_encoder."
+    
+        for key, value in full_state_dict.items():
+            if marker not in key:
+                continue
+    
+            relative_key = key.split(
+                marker,
+                1,
+            )[1]
+    
+            spatial_state_dict[relative_key] = (
+                value.detach()
+                .to(
+                    device="cpu",
+                    dtype=save_dtype,
+                )
+                .contiguous()
+            )
+    
+        if self._config.model.use_spatial_track_encoder:
+            if not spatial_state_dict:
+                spatial_keys = [
+                    key
+                    for key in full_state_dict
+                    if "spatial" in key.lower()
+                    or "track" in key.lower()
+                ]
+    
+                raise RuntimeError(
+                    "SpatialTrackEncoder is enabled, but no encoder "
+                    "weights were found in full_state_dict.\n"
+                    f"Possible keys: {spatial_keys[:30]}"
+                )
+    
+            save_file(
+                spatial_state_dict,
+                spatial_path,
+            )
+    
+        logger.info(
+            f"LoRA saved to {lora_path}"
+        )
+    
+        if spatial_state_dict:
+            logger.info(
+                "SpatialTrackEncoder saved to "
+                f"{spatial_path}"
+            )
+    
         self._save_training_state(save_dir)
+    
+        return lora_path
 
-        return saved_weights_path
-
+    
     def _cleanup_checkpoints(self) -> None:
         """Clean up old checkpoints."""
         if 0 < self._config.checkpoints.keep_last_n < len(self._checkpoint_paths):
