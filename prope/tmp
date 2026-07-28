@@ -1,0 +1,470 @@
+DEBUG    [rank 0] Loaded dataset with 21 samples from sources: ['conditions', 'latents', 'audio_latents', 'reference_latents', 'reference_audio_latents']          trainer.py:1157
+/root/miniconda3/envs/ltx/lib/python3.10/site-packages/pydantic/main.py:475: UserWarning: Pydantic serializer warnings:
+  PydanticSerializationUnexpectedValue(Expected `bool` - serialized value may not be as expected [field_name='use_track_prope', input_value='use_track_prope', input_type=str])
+  return self.__pydantic_serializer__.to_python(
+INFO     [rank 0] 💾 Training configuration saved to: training_config.yaml                                                                                         trainer.py:1586
+INFO     [rank 0] 🚀 Starting training...                                                                                                                           trainer.py:204
+
+/root/miniconda3/envs/ltx/lib/python3.10/site-packages/torch/distributed/fsdp/fully_sharded_data_parallel.py:821: FutureWarning: FSDP.state_dict_type() and FSDP.set_state_dict_type() are being deprecated. Please use APIs, get_state_dict() and set_state_dict(), which can support different parallelisms, FSDP1, FSDP2, DDP. API doc: https://pytorch.org/docs/stable/distributed.checkpoint.html#torch.distributed.checkpoint.state_dict.get_state_dict .Tutorial: https://pytorch.org/tutorials/recipes/distributed_checkpoint_recipe.html .
+  prev_state_dict_settings = FullyShardedDataParallel.set_state_dict_type(
+/root/miniconda3/envs/ltx/lib/python3.10/site-packages/torch/distributed/fsdp/fully_sharded_data_parallel.py:821: FutureWarning: FSDP.state_dict_type() and FSDP.set_state_dict_type() are being deprecated. Please use APIs, get_state_dict() and set_state_dict(), which can support different parallelisms, FSDP1, FSDP2, DDP. API doc: https://pytorch.org/docs/stable/distributed.checkpoint.html#torch.distributed.checkpoint.state_dict.get_state_dict .Tutorial: https://pytorch.org/tutorials/recipes/distributed_checkpoint_recipe.html .
+  prev_state_dict_settings = FullyShardedDataParallel.set_state_dict_type(
+/root/miniconda3/envs/ltx/lib/python3.10/site-packages/torch/distributed/fsdp/fully_sharded_data_parallel.py:821: FutureWarning: FSDP.state_dict_type() and FSDP.set_state_dict_type() are being deprecated. Please use APIs, get_state_dict() and set_state_dict(), which can support different parallelisms, FSDP1, FSDP2, DDP. API doc: https://pytorch.org/docs/stable/distributed.checkpoint.html#torch.distributed.checkpoint.state_dict.get_state_dict .Tutorial: https://pytorch.org/tutorials/recipes/distributed_checkpoint_recipe.html .
+  prev_state_dict_settings = FullyShardedDataParallel.set_state_dict_type(
+/root/miniconda3/envs/ltx/lib/python3.10/site-packages/torch/distributed/fsdp/fully_sharded_data_parallel.py:821: FutureWarning: FSDP.state_dict_type() and FSDP.set_state_dict_type() are being deprecated. Please use APIs, get_state_dict() and set_state_dict(), which can support different parallelisms, FSDP1, FSDP2, DDP. API doc: https://pytorch.org/docs/stable/distributed.checkpoint.html#torch.distributed.checkpoint.state_dict.get_state_dict .Tutorial: https://pytorch.org/tutorials/recipes/distributed_checkpoint_recipe.html .
+  prev_state_dict_settings = FullyShardedDataParallel.set_state_dict_type(
+/root/miniconda3/envs/ltx/lib/python3.10/site-packages/torch/distributed/fsdp/fully_sharded_data_parallel.py:821: FutureWarning: FSDP.state_dict_type() and FSDP.set_state_dict_type() are being deprecated. Please use APIs, get_state_dict() and set_state_dict(), which can support different parallelisms, FSDP1, FSDP2, DDP. API doc: https://pytorch.org/docs/stable/distributed.checkpoint.html#torch.distributed.checkpoint.state_dict.get_state_dict .Tutorial: https://pytorch.org/tutorials/recipes/distributed_checkpoint_recipe.html .
+  prev_state_dict_settings = FullyShardedDataParallel.set_state_dict_type(
+/root/miniconda3/envs/ltx/lib/python3.10/site-packages/torch/distributed/fsdp/fully_sharded_data_parallel.py:821: FutureWarning: FSDP.state_dict_type() and FSDP.set_state_dict_type() are being deprecated. Please use APIs, get_state_dict() and set_state_dict(), which can support different parallelisms, FSDP1, FSDP2, DDP. API doc: https://pytorch.org/docs/stable/distributed.checkpoint.html#torch.distributed.checkpoint.state_dict.get_state_dict .Tutorial: https://pytorch.org/tutorials/recipes/distributed_checkpoint_recipe.html .
+  prev_state_dict_settings = FullyShardedDataParallel.set_state_dict_type(
+/root/miniconda3/envs/ltx/lib/python3.10/site-packages/torch/distributed/fsdp/fully_sharded_data_parallel.py:821: FutureWarning: FSDP.state_dict_type() and FSDP.set_state_dict_type() are being deprecated. Please use APIs, get_state_dict() and set_state_dict(), which can support different parallelisms, FSDP1, FSDP2, DDP. API doc: https://pytorch.org/docs/stable/distributed.checkpoint.html#torch.distributed.checkpoint.state_dict.get_state_dict .Tutorial: https://pytorch.org/tutorials/recipes/distributed_checkpoint_recipe.html .
+  prev_state_dict_settings = FullyShardedDataParallel.set_state_dict_type(
+/root/miniconda3/envs/ltx/lib/python3.10/site-packages/torch/distributed/fsdp/fully_sharded_data_parallel.py:821: FutureWarning: FSDP.state_dict_type() and FSDP.set_state_dict_type() are being deprecated. Please use APIs, get_state_dict() and set_state_dict(), which can support different parallelisms, FSDP1, FSDP2, DDP. API doc: https://pytorch.org/docs/stable/distributed.checkpoint.html#torch.distributed.checkpoint.state_dict.get_state_dict .Tutorial: https://pytorch.org/tutorials/recipes/distributed_checkpoint_recipe.html .
+  prev_state_dict_settings = FullyShardedDataParallel.set_state_dict_type(
+/root/miniconda3/envs/ltx/lib/python3.10/site-packages/torch/distributed/fsdp/fully_sharded_data_parallel.py:828: FutureWarning: FSDP.state_dict_type() and FSDP.set_state_dict_type() are being deprecated. Please use APIs, get_state_dict() and set_state_dict(), which can support different parallelisms, FSDP1, FSDP2, DDP. API doc: https://pytorch.org/docs/stable/distributed.checkpoint.html#torch.distributed.checkpoint.state_dict.get_state_dict .Tutorial: https://pytorch.org/tutorials/recipes/distributed_checkpoint_recipe.html .
+  FullyShardedDataParallel.set_state_dict_type(
+/root/miniconda3/envs/ltx/lib/python3.10/site-packages/torch/distributed/fsdp/fully_sharded_data_parallel.py:828: FutureWarning: FSDP.state_dict_type() and FSDP.set_state_dict_type() are being deprecated. Please use APIs, get_state_dict() and set_state_dict(), which can support different parallelisms, FSDP1, FSDP2, DDP. API doc: https://pytorch.org/docs/stable/distributed.checkpoint.html#torch.distributed.checkpoint.state_dict.get_state_dict .Tutorial: https://pytorch.org/tutorials/recipes/distributed_checkpoint_recipe.html .
+  FullyShardedDataParallel.set_state_dict_type(
+/root/miniconda3/envs/ltx/lib/python3.10/site-packages/torch/distributed/fsdp/fully_sharded_data_parallel.py:828: FutureWarning: FSDP.state_dict_type() and FSDP.set_state_dict_type() are being deprecated. Please use APIs, get_state_dict() and set_state_dict(), which can support different parallelisms, FSDP1, FSDP2, DDP. API doc: https://pytorch.org/docs/stable/distributed.checkpoint.html#torch.distributed.checkpoint.state_dict.get_state_dict .Tutorial: https://pytorch.org/tutorials/recipes/distributed_checkpoint_recipe.html .
+  FullyShardedDataParallel.set_state_dict_type(
+/root/miniconda3/envs/ltx/lib/python3.10/site-packages/torch/distributed/fsdp/fully_sharded_data_parallel.py:828: FutureWarning: FSDP.state_dict_type() and FSDP.set_state_dict_type() are being deprecated. Please use APIs, get_state_dict() and set_state_dict(), which can support different parallelisms, FSDP1, FSDP2, DDP. API doc: https://pytorch.org/docs/stable/distributed.checkpoint.html#torch.distributed.checkpoint.state_dict.get_state_dict .Tutorial: https://pytorch.org/tutorials/recipes/distributed_checkpoint_recipe.html .
+  FullyShardedDataParallel.set_state_dict_type(
+/root/miniconda3/envs/ltx/lib/python3.10/site-packages/torch/distributed/fsdp/fully_sharded_data_parallel.py:828: FutureWarning: FSDP.state_dict_type() and FSDP.set_state_dict_type() are being deprecated. Please use APIs, get_state_dict() and set_state_dict(), which can support different parallelisms, FSDP1, FSDP2, DDP. API doc: https://pytorch.org/docs/stable/distributed.checkpoint.html#torch.distributed.checkpoint.state_dict.get_state_dict .Tutorial: https://pytorch.org/tutorials/recipes/distributed_checkpoint_recipe.html .
+  FullyShardedDataParallel.set_state_dict_type(
+/root/miniconda3/envs/ltx/lib/python3.10/site-packages/torch/distributed/fsdp/fully_sharded_data_parallel.py:828: FutureWarning: FSDP.state_dict_type() and FSDP.set_state_dict_type() are being deprecated. Please use APIs, get_state_dict() and set_state_dict(), which can support different parallelisms, FSDP1, FSDP2, DDP. API doc: https://pytorch.org/docs/stable/distributed.checkpoint.html#torch.distributed.checkpoint.state_dict.get_state_dict .Tutorial: https://pytorch.org/tutorials/recipes/distributed_checkpoint_recipe.html .
+  FullyShardedDataParallel.set_state_dict_type(
+/root/miniconda3/envs/ltx/lib/python3.10/site-packages/torch/distributed/fsdp/fully_sharded_data_parallel.py:828: FutureWarning: FSDP.state_dict_type() and FSDP.set_state_dict_type() are being deprecated. Please use APIs, get_state_dict() and set_state_dict(), which can support different parallelisms, FSDP1, FSDP2, DDP. API doc: https://pytorch.org/docs/stable/distributed.checkpoint.html#torch.distributed.checkpoint.state_dict.get_state_dict .Tutorial: https://pytorch.org/tutorials/recipes/distributed_checkpoint_recipe.html .
+  FullyShardedDataParallel.set_state_dict_type(
+/root/miniconda3/envs/ltx/lib/python3.10/site-packages/torch/distributed/fsdp/fully_sharded_data_parallel.py:828: FutureWarning: FSDP.state_dict_type() and FSDP.set_state_dict_type() are being deprecated. Please use APIs, get_state_dict() and set_state_dict(), which can support different parallelisms, FSDP1, FSDP2, DDP. API doc: https://pytorch.org/docs/stable/distributed.checkpoint.html#torch.distributed.checkpoint.state_dict.get_state_dict .Tutorial: https://pytorch.org/tutorials/recipes/distributed_checkpoint_recipe.html .
+  FullyShardedDataParallel.set_state_dict_type(
+INFO     [rank 0] 💾 Lora weights for step 1 saved in checkpoints/lora_weights_step_00001.safetensors                                                              trainer.py:1463
+DEBUG    [rank 0] Training state saved to checkpoints/training_state_step_00001.pt                                                                                 trainer.py:1549
+[rank6]:[E728 11:17:09.145134356 ProcessGroupNCCL.cpp:689] [Rank 6] Watchdog caught collective operation timeout: WorkNCCL(SeqNum=500, OpType=ALLREDUCE, NumelIn=1, NumelOut=1, Timeout(ms)=600000) ran for 600031 milliseconds before timing out.
+[rank6]:[E728 11:17:09.145275845 ProcessGroupNCCL.cpp:2303] [PG ID 0 PG GUID 0(default_pg) Rank 6]  failure detected by watchdog at work sequence id: 500 PG status: last enqueued work: 500, last completed work: 499
+[rank6]:[E728 11:17:09.145592120 ProcessGroupNCCL.cpp:733] Stack trace of the failed collective: 
+#0 barrier from /root/miniconda3/envs/ltx/lib/python3.10/site-packages/torch/distributed/distributed_c10d.py:5030
+#1 wrapper from /root/miniconda3/envs/ltx/lib/python3.10/site-packages/torch/distributed/c10d_logger.py:83
+#2 wait_for_everyone from /root/miniconda3/envs/ltx/lib/python3.10/site-packages/accelerate/state.py:412
+#3 wait_for_everyone from /root/miniconda3/envs/ltx/lib/python3.10/site-packages/accelerate/utils/other.py:320
+#4 wait_for_everyone from /root/miniconda3/envs/ltx/lib/python3.10/site-packages/accelerate/accelerator.py:3256
+#5 train from /data/vjuicefs_ai_camera_jgroup_acadmic/public_data/11194554/WorkSpace/LTX-2/packages/ltx-trainer/src/ltx_trainer/trainer.py:278
+#6 main from /data/vjuicefs_ai_camera_jgroup_acadmic/public_data/11194554/WorkSpace/LTX-2/packages/ltx-trainer/scripts/train.py:59
+#7 wrapper from /root/miniconda3/envs/ltx/lib/python3.10/site-packages/typer/main.py:1514
+#8 invoke from /root/miniconda3/envs/ltx/lib/python3.10/site-packages/click/core.py:877
+#9 invoke from /root/miniconda3/envs/ltx/lib/python3.10/site-packages/click/core.py:1308
+#10 _main from /root/miniconda3/envs/ltx/lib/python3.10/site-packages/typer/core.py:188
+#11 main from /root/miniconda3/envs/ltx/lib/python3.10/site-packages/typer/core.py:708
+#12 __call__ from /root/miniconda3/envs/ltx/lib/python3.10/site-packages/click/core.py:1524
+#13 __call__ from /root/miniconda3/envs/ltx/lib/python3.10/site-packages/typer/main.py:1135
+#14 <module> from /data/vjuicefs_ai_camera_jgroup_acadmic/public_data/11194554/WorkSpace/LTX-2/packages/ltx-trainer/scripts/train.py:63
+
+[rank6]:[E728 11:17:09.145673009 ProcessGroupNCCL.cpp:2636] [PG ID 0 PG GUID 0(default_pg) Rank 6] First PG on this rank to signal dumping.
+[rank3]:[E728 11:17:09.147590965 ProcessGroupNCCL.cpp:689] [Rank 3] Watchdog caught collective operation timeout: WorkNCCL(SeqNum=500, OpType=ALLREDUCE, NumelIn=1, NumelOut=1, Timeout(ms)=600000) ran for 600031 milliseconds before timing out.
+[rank3]:[E728 11:17:09.147688096 ProcessGroupNCCL.cpp:2303] [PG ID 0 PG GUID 0(default_pg) Rank 3]  failure detected by watchdog at work sequence id: 500 PG status: last enqueued work: 500, last completed work: 499
+[rank4]:[E728 11:17:09.147810709 ProcessGroupNCCL.cpp:689] [Rank 4] Watchdog caught collective operation timeout: WorkNCCL(SeqNum=500, OpType=ALLREDUCE, NumelIn=1, NumelOut=1, Timeout(ms)=600000) ran for 600030 milliseconds before timing out.
+[rank4]:[E728 11:17:09.147902397 ProcessGroupNCCL.cpp:2303] [PG ID 0 PG GUID 0(default_pg) Rank 4]  failure detected by watchdog at work sequence id: 500 PG status: last enqueued work: 500, last completed work: 499
+[rank3]:[E728 11:17:09.148010936 ProcessGroupNCCL.cpp:733] Stack trace of the failed collective: 
+#0 barrier from /root/miniconda3/envs/ltx/lib/python3.10/site-packages/torch/distributed/distributed_c10d.py:5030
+#1 wrapper from /root/miniconda3/envs/ltx/lib/python3.10/site-packages/torch/distributed/c10d_logger.py:83
+#2 wait_for_everyone from /root/miniconda3/envs/ltx/lib/python3.10/site-packages/accelerate/state.py:412
+#3 wait_for_everyone from /root/miniconda3/envs/ltx/lib/python3.10/site-packages/accelerate/utils/other.py:320
+#4 wait_for_everyone from /root/miniconda3/envs/ltx/lib/python3.10/site-packages/accelerate/accelerator.py:3256
+#5 train from /data/vjuicefs_ai_camera_jgroup_acadmic/public_data/11194554/WorkSpace/LTX-2/packages/ltx-trainer/src/ltx_trainer/trainer.py:278
+#6 main from /data/vjuicefs_ai_camera_jgroup_acadmic/public_data/11194554/WorkSpace/LTX-2/packages/ltx-trainer/scripts/train.py:59
+#7 wrapper from /root/miniconda3/envs/ltx/lib/python3.10/site-packages/typer/main.py:1514
+#8 invoke from /root/miniconda3/envs/ltx/lib/python3.10/site-packages/click/core.py:877
+#9 invoke from /root/miniconda3/envs/ltx/lib/python3.10/site-packages/click/core.py:1308
+#10 _main from /root/miniconda3/envs/ltx/lib/python3.10/site-packages/typer/core.py:188
+#11 main from /root/miniconda3/envs/ltx/lib/python3.10/site-packages/typer/core.py:708
+#12 __call__ from /root/miniconda3/envs/ltx/lib/python3.10/site-packages/click/core.py:1524
+#13 __call__ from /root/miniconda3/envs/ltx/lib/python3.10/site-packages/typer/main.py:1135
+#14 <module> from /data/vjuicefs_ai_camera_jgroup_acadmic/public_data/11194554/WorkSpace/LTX-2/packages/ltx-trainer/scripts/train.py:63
+
+[rank3]:[E728 11:17:09.148086311 ProcessGroupNCCL.cpp:2636] [PG ID 0 PG GUID 0(default_pg) Rank 3] First PG on this rank to signal dumping.
+[rank4]:[E728 11:17:09.148202581 ProcessGroupNCCL.cpp:733] Stack trace of the failed collective: 
+#0 barrier from /root/miniconda3/envs/ltx/lib/python3.10/site-packages/torch/distributed/distributed_c10d.py:5030
+#1 wrapper from /root/miniconda3/envs/ltx/lib/python3.10/site-packages/torch/distributed/c10d_logger.py:83
+#2 wait_for_everyone from /root/miniconda3/envs/ltx/lib/python3.10/site-packages/accelerate/state.py:412
+#3 wait_for_everyone from /root/miniconda3/envs/ltx/lib/python3.10/site-packages/accelerate/utils/other.py:320
+#4 wait_for_everyone from /root/miniconda3/envs/ltx/lib/python3.10/site-packages/accelerate/accelerator.py:3256
+#5 train from /data/vjuicefs_ai_camera_jgroup_acadmic/public_data/11194554/WorkSpace/LTX-2/packages/ltx-trainer/src/ltx_trainer/trainer.py:278
+#6 main from /data/vjuicefs_ai_camera_jgroup_acadmic/public_data/11194554/WorkSpace/LTX-2/packages/ltx-trainer/scripts/train.py:59
+#7 wrapper from /root/miniconda3/envs/ltx/lib/python3.10/site-packages/typer/main.py:1514
+#8 invoke from /root/miniconda3/envs/ltx/lib/python3.10/site-packages/click/core.py:877
+#9 invoke from /root/miniconda3/envs/ltx/lib/python3.10/site-packages/click/core.py:1308
+#10 _main from /root/miniconda3/envs/ltx/lib/python3.10/site-packages/typer/core.py:188
+#11 main from /root/miniconda3/envs/ltx/lib/python3.10/site-packages/typer/core.py:708
+#12 __call__ from /root/miniconda3/envs/ltx/lib/python3.10/site-packages/click/core.py:1524
+#13 __call__ from /root/miniconda3/envs/ltx/lib/python3.10/site-packages/typer/main.py:1135
+#14 <module> from /data/vjuicefs_ai_camera_jgroup_acadmic/public_data/11194554/WorkSpace/LTX-2/packages/ltx-trainer/scripts/train.py:63
+
+[rank4]:[E728 11:17:09.148267059 ProcessGroupNCCL.cpp:2636] [PG ID 0 PG GUID 0(default_pg) Rank 4] First PG on this rank to signal dumping.
+[rank2]:[E728 11:17:09.148748145 ProcessGroupNCCL.cpp:689] [Rank 2] Watchdog caught collective operation timeout: WorkNCCL(SeqNum=500, OpType=ALLREDUCE, NumelIn=1, NumelOut=1, Timeout(ms)=600000) ran for 600031 milliseconds before timing out.
+[rank2]:[E728 11:17:09.148861551 ProcessGroupNCCL.cpp:2303] [PG ID 0 PG GUID 0(default_pg) Rank 2]  failure detected by watchdog at work sequence id: 500 PG status: last enqueued work: 500, last completed work: 499
+[rank2]:[E728 11:17:09.149204186 ProcessGroupNCCL.cpp:733] Stack trace of the failed collective: 
+#0 barrier from /root/miniconda3/envs/ltx/lib/python3.10/site-packages/torch/distributed/distributed_c10d.py:5030
+#1 wrapper from /root/miniconda3/envs/ltx/lib/python3.10/site-packages/torch/distributed/c10d_logger.py:83
+#2 wait_for_everyone from /root/miniconda3/envs/ltx/lib/python3.10/site-packages/accelerate/state.py:412
+#3 wait_for_everyone from /root/miniconda3/envs/ltx/lib/python3.10/site-packages/accelerate/utils/other.py:320
+#4 wait_for_everyone from /root/miniconda3/envs/ltx/lib/python3.10/site-packages/accelerate/accelerator.py:3256
+#5 train from /data/vjuicefs_ai_camera_jgroup_acadmic/public_data/11194554/WorkSpace/LTX-2/packages/ltx-trainer/src/ltx_trainer/trainer.py:278
+#6 main from /data/vjuicefs_ai_camera_jgroup_acadmic/public_data/11194554/WorkSpace/LTX-2/packages/ltx-trainer/scripts/train.py:59
+#7 wrapper from /root/miniconda3/envs/ltx/lib/python3.10/site-packages/typer/main.py:1514
+#8 invoke from /root/miniconda3/envs/ltx/lib/python3.10/site-packages/click/core.py:877
+#9 invoke from /root/miniconda3/envs/ltx/lib/python3.10/site-packages/click/core.py:1308
+#10 _main from /root/miniconda3/envs/ltx/lib/python3.10/site-packages/typer/core.py:188
+#11 main from /root/miniconda3/envs/ltx/lib/python3.10/site-packages/typer/core.py:708
+#12 __call__ from /root/miniconda3/envs/ltx/lib/python3.10/site-packages/click/core.py:1524
+#13 __call__ from /root/miniconda3/envs/ltx/lib/python3.10/site-packages/typer/main.py:1135
+#14 <module> from /data/vjuicefs_ai_camera_jgroup_acadmic/public_data/11194554/WorkSpace/LTX-2/packages/ltx-trainer/scripts/train.py:63
+
+[rank2]:[E728 11:17:09.149281704 ProcessGroupNCCL.cpp:2636] [PG ID 0 PG GUID 0(default_pg) Rank 2] First PG on this rank to signal dumping.
+[rank7]:[E728 11:17:09.181237228 ProcessGroupNCCL.cpp:689] [Rank 7] Watchdog caught collective operation timeout: WorkNCCL(SeqNum=500, OpType=ALLREDUCE, NumelIn=1, NumelOut=1, Timeout(ms)=600000) ran for 600063 milliseconds before timing out.
+[rank7]:[E728 11:17:09.181322296 ProcessGroupNCCL.cpp:2303] [PG ID 0 PG GUID 0(default_pg) Rank 7]  failure detected by watchdog at work sequence id: 500 PG status: last enqueued work: 500, last completed work: 499
+[rank7]:[E728 11:17:09.181601107 ProcessGroupNCCL.cpp:733] Stack trace of the failed collective: 
+#0 barrier from /root/miniconda3/envs/ltx/lib/python3.10/site-packages/torch/distributed/distributed_c10d.py:5030
+#1 wrapper from /root/miniconda3/envs/ltx/lib/python3.10/site-packages/torch/distributed/c10d_logger.py:83
+#2 wait_for_everyone from /root/miniconda3/envs/ltx/lib/python3.10/site-packages/accelerate/state.py:412
+#3 wait_for_everyone from /root/miniconda3/envs/ltx/lib/python3.10/site-packages/accelerate/utils/other.py:320
+#4 wait_for_everyone from /root/miniconda3/envs/ltx/lib/python3.10/site-packages/accelerate/accelerator.py:3256
+#5 train from /data/vjuicefs_ai_camera_jgroup_acadmic/public_data/11194554/WorkSpace/LTX-2/packages/ltx-trainer/src/ltx_trainer/trainer.py:278
+#6 main from /data/vjuicefs_ai_camera_jgroup_acadmic/public_data/11194554/WorkSpace/LTX-2/packages/ltx-trainer/scripts/train.py:59
+#7 wrapper from /root/miniconda3/envs/ltx/lib/python3.10/site-packages/typer/main.py:1514
+#8 invoke from /root/miniconda3/envs/ltx/lib/python3.10/site-packages/click/core.py:877
+#9 invoke from /root/miniconda3/envs/ltx/lib/python3.10/site-packages/click/core.py:1308
+#10 _main from /root/miniconda3/envs/ltx/lib/python3.10/site-packages/typer/core.py:188
+#11 main from /root/miniconda3/envs/ltx/lib/python3.10/site-packages/typer/core.py:708
+#12 __call__ from /root/miniconda3/envs/ltx/lib/python3.10/site-packages/click/core.py:1524
+#13 __call__ from /root/miniconda3/envs/ltx/lib/python3.10/site-packages/typer/main.py:1135
+#14 <module> from /data/vjuicefs_ai_camera_jgroup_acadmic/public_data/11194554/WorkSpace/LTX-2/packages/ltx-trainer/scripts/train.py:63
+
+[rank7]:[E728 11:17:09.181651531 ProcessGroupNCCL.cpp:2636] [PG ID 0 PG GUID 0(default_pg) Rank 7] First PG on this rank to signal dumping.
+[rank1]:[E728 11:17:09.184914292 ProcessGroupNCCL.cpp:689] [Rank 1] Watchdog caught collective operation timeout: WorkNCCL(SeqNum=500, OpType=ALLREDUCE, NumelIn=1, NumelOut=1, Timeout(ms)=600000) ran for 600064 milliseconds before timing out.
+[rank1]:[E728 11:17:09.185004853 ProcessGroupNCCL.cpp:2303] [PG ID 0 PG GUID 0(default_pg) Rank 1]  failure detected by watchdog at work sequence id: 500 PG status: last enqueued work: 500, last completed work: 499
+[rank1]:[E728 11:17:09.185304677 ProcessGroupNCCL.cpp:733] Stack trace of the failed collective: 
+#0 barrier from /root/miniconda3/envs/ltx/lib/python3.10/site-packages/torch/distributed/distributed_c10d.py:5030
+#1 wrapper from /root/miniconda3/envs/ltx/lib/python3.10/site-packages/torch/distributed/c10d_logger.py:83
+#2 wait_for_everyone from /root/miniconda3/envs/ltx/lib/python3.10/site-packages/accelerate/state.py:412
+#3 wait_for_everyone from /root/miniconda3/envs/ltx/lib/python3.10/site-packages/accelerate/utils/other.py:320
+#4 wait_for_everyone from /root/miniconda3/envs/ltx/lib/python3.10/site-packages/accelerate/accelerator.py:3256
+#5 train from /data/vjuicefs_ai_camera_jgroup_acadmic/public_data/11194554/WorkSpace/LTX-2/packages/ltx-trainer/src/ltx_trainer/trainer.py:278
+#6 main from /data/vjuicefs_ai_camera_jgroup_acadmic/public_data/11194554/WorkSpace/LTX-2/packages/ltx-trainer/scripts/train.py:59
+#7 wrapper from /root/miniconda3/envs/ltx/lib/python3.10/site-packages/typer/main.py:1514
+#8 invoke from /root/miniconda3/envs/ltx/lib/python3.10/site-packages/click/core.py:877
+#9 invoke from /root/miniconda3/envs/ltx/lib/python3.10/site-packages/click/core.py:1308
+#10 _main from /root/miniconda3/envs/ltx/lib/python3.10/site-packages/typer/core.py:188
+#11 main from /root/miniconda3/envs/ltx/lib/python3.10/site-packages/typer/core.py:708
+#12 __call__ from /root/miniconda3/envs/ltx/lib/python3.10/site-packages/click/core.py:1524
+#13 __call__ from /root/miniconda3/envs/ltx/lib/python3.10/site-packages/typer/main.py:1135
+#14 <module> from /data/vjuicefs_ai_camera_jgroup_acadmic/public_data/11194554/WorkSpace/LTX-2/packages/ltx-trainer/scripts/train.py:63
+
+[rank1]:[E728 11:17:09.185361912 ProcessGroupNCCL.cpp:2636] [PG ID 0 PG GUID 0(default_pg) Rank 1] First PG on this rank to signal dumping.
+[rank5]:[E728 11:17:09.203032818 ProcessGroupNCCL.cpp:689] [Rank 5] Watchdog caught collective operation timeout: WorkNCCL(SeqNum=500, OpType=ALLREDUCE, NumelIn=1, NumelOut=1, Timeout(ms)=600000) ran for 600089 milliseconds before timing out.
+[rank5]:[E728 11:17:09.203117052 ProcessGroupNCCL.cpp:2303] [PG ID 0 PG GUID 0(default_pg) Rank 5]  failure detected by watchdog at work sequence id: 500 PG status: last enqueued work: 500, last completed work: 499
+[rank5]:[E728 11:17:09.203386159 ProcessGroupNCCL.cpp:733] Stack trace of the failed collective: 
+#0 barrier from /root/miniconda3/envs/ltx/lib/python3.10/site-packages/torch/distributed/distributed_c10d.py:5030
+#1 wrapper from /root/miniconda3/envs/ltx/lib/python3.10/site-packages/torch/distributed/c10d_logger.py:83
+#2 wait_for_everyone from /root/miniconda3/envs/ltx/lib/python3.10/site-packages/accelerate/state.py:412
+#3 wait_for_everyone from /root/miniconda3/envs/ltx/lib/python3.10/site-packages/accelerate/utils/other.py:320
+#4 wait_for_everyone from /root/miniconda3/envs/ltx/lib/python3.10/site-packages/accelerate/accelerator.py:3256
+#5 train from /data/vjuicefs_ai_camera_jgroup_acadmic/public_data/11194554/WorkSpace/LTX-2/packages/ltx-trainer/src/ltx_trainer/trainer.py:278
+#6 main from /data/vjuicefs_ai_camera_jgroup_acadmic/public_data/11194554/WorkSpace/LTX-2/packages/ltx-trainer/scripts/train.py:59
+#7 wrapper from /root/miniconda3/envs/ltx/lib/python3.10/site-packages/typer/main.py:1514
+#8 invoke from /root/miniconda3/envs/ltx/lib/python3.10/site-packages/click/core.py:877
+#9 invoke from /root/miniconda3/envs/ltx/lib/python3.10/site-packages/click/core.py:1308
+#10 _main from /root/miniconda3/envs/ltx/lib/python3.10/site-packages/typer/core.py:188
+#11 main from /root/miniconda3/envs/ltx/lib/python3.10/site-packages/typer/core.py:708
+#12 __call__ from /root/miniconda3/envs/ltx/lib/python3.10/site-packages/click/core.py:1524
+#13 __call__ from /root/miniconda3/envs/ltx/lib/python3.10/site-packages/typer/main.py:1135
+#14 <module> from /data/vjuicefs_ai_camera_jgroup_acadmic/public_data/11194554/WorkSpace/LTX-2/packages/ltx-trainer/scripts/train.py:63
+
+[rank5]:[E728 11:17:09.203444155 ProcessGroupNCCL.cpp:2636] [PG ID 0 PG GUID 0(default_pg) Rank 5] First PG on this rank to signal dumping.
+[rank6]:[E728 11:17:10.862826924 ProcessGroupNCCL.cpp:1914] [PG ID 0 PG GUID 0(default_pg) Rank 6] Received a dump signal due to a collective timeout from this local rank and we will try our best to dump the debug info. Last enqueued NCCL work: 500, last completed NCCL work: 499.This is most likely caused by incorrect usages of collectives, e.g., wrong sizes used across ranks, the order of collectives is not same for all ranks or the scheduled collective, for some reason, didn't run. Additionally, this can be caused by GIL deadlock or other reasons such as network errors or bugs in the communications library (e.g. NCCL), etc. 
+[rank6]:[E728 11:17:10.862936535 ProcessGroupNCCL.cpp:1628] [PG ID 0 PG GUID 0(default_pg) Rank 6] ProcessGroupNCCL preparing to dump debug info. Include stack trace: 1, only active collectives: 0
+[rank2]:[E728 11:17:10.913449875 ProcessGroupNCCL.cpp:1914] [PG ID 0 PG GUID 0(default_pg) Rank 2] Received a dump signal due to a collective timeout from this local rank and we will try our best to dump the debug info. Last enqueued NCCL work: 500, last completed NCCL work: 499.This is most likely caused by incorrect usages of collectives, e.g., wrong sizes used across ranks, the order of collectives is not same for all ranks or the scheduled collective, for some reason, didn't run. Additionally, this can be caused by GIL deadlock or other reasons such as network errors or bugs in the communications library (e.g. NCCL), etc. 
+[rank2]:[E728 11:17:10.913559684 ProcessGroupNCCL.cpp:1628] [PG ID 0 PG GUID 0(default_pg) Rank 2] ProcessGroupNCCL preparing to dump debug info. Include stack trace: 1, only active collectives: 0
+[rank4]:[E728 11:17:10.915795350 ProcessGroupNCCL.cpp:1914] [PG ID 0 PG GUID 0(default_pg) Rank 4] Received a dump signal due to a collective timeout from this local rank and we will try our best to dump the debug info. Last enqueued NCCL work: 500, last completed NCCL work: 499.This is most likely caused by incorrect usages of collectives, e.g., wrong sizes used across ranks, the order of collectives is not same for all ranks or the scheduled collective, for some reason, didn't run. Additionally, this can be caused by GIL deadlock or other reasons such as network errors or bugs in the communications library (e.g. NCCL), etc. 
+[rank4]:[E728 11:17:10.915880419 ProcessGroupNCCL.cpp:1628] [PG ID 0 PG GUID 0(default_pg) Rank 4] ProcessGroupNCCL preparing to dump debug info. Include stack trace: 1, only active collectives: 0
+[rank5]:[E728 11:17:10.920335967 ProcessGroupNCCL.cpp:1914] [PG ID 0 PG GUID 0(default_pg) Rank 5] Received a dump signal due to a collective timeout from this local rank and we will try our best to dump the debug info. Last enqueued NCCL work: 500, last completed NCCL work: 499.This is most likely caused by incorrect usages of collectives, e.g., wrong sizes used across ranks, the order of collectives is not same for all ranks or the scheduled collective, for some reason, didn't run. Additionally, this can be caused by GIL deadlock or other reasons such as network errors or bugs in the communications library (e.g. NCCL), etc. 
+[rank5]:[E728 11:17:10.920433057 ProcessGroupNCCL.cpp:1628] [PG ID 0 PG GUID 0(default_pg) Rank 5] ProcessGroupNCCL preparing to dump debug info. Include stack trace: 1, only active collectives: 0
+[rank0]:[E728 11:17:10.989005483 ProcessGroupNCCL.cpp:1849] [PG ID 0 PG GUID 0(default_pg) Rank 0] Observed flight recorder dump signal from another rank via TCPStore.
+[rank0]:[E728 11:17:10.989119684 ProcessGroupNCCL.cpp:1914] [PG ID 0 PG GUID 0(default_pg) Rank 0] Received a dump signal due to a collective timeout from  rank 5 and we will try our best to dump the debug info. Last enqueued NCCL work: 501, last completed NCCL work: 499.This is most likely caused by incorrect usages of collectives, e.g., wrong sizes used across ranks, the order of collectives is not same for all ranks or the scheduled collective, for some reason, didn't run. Additionally, this can be caused by GIL deadlock or other reasons such as network errors or bugs in the communications library (e.g. NCCL), etc. 
+[rank0]:[E728 11:17:10.989262967 ProcessGroupNCCL.cpp:1628] [PG ID 0 PG GUID 0(default_pg) Rank 0] ProcessGroupNCCL preparing to dump debug info. Include stack trace: 1, only active collectives: 0
+[rank1]:[E728 11:17:10.995438365 ProcessGroupNCCL.cpp:1914] [PG ID 0 PG GUID 0(default_pg) Rank 1] Received a dump signal due to a collective timeout from this local rank and we will try our best to dump the debug info. Last enqueued NCCL work: 500, last completed NCCL work: 499.This is most likely caused by incorrect usages of collectives, e.g., wrong sizes used across ranks, the order of collectives is not same for all ranks or the scheduled collective, for some reason, didn't run. Additionally, this can be caused by GIL deadlock or other reasons such as network errors or bugs in the communications library (e.g. NCCL), etc. 
+[rank1]:[E728 11:17:10.995560261 ProcessGroupNCCL.cpp:1628] [PG ID 0 PG GUID 0(default_pg) Rank 1] ProcessGroupNCCL preparing to dump debug info. Include stack trace: 1, only active collectives: 0
+[rank3]:[E728 11:17:10.997114508 ProcessGroupNCCL.cpp:1914] [PG ID 0 PG GUID 0(default_pg) Rank 3] Received a dump signal due to a collective timeout from this local rank and we will try our best to dump the debug info. Last enqueued NCCL work: 500, last completed NCCL work: 499.This is most likely caused by incorrect usages of collectives, e.g., wrong sizes used across ranks, the order of collectives is not same for all ranks or the scheduled collective, for some reason, didn't run. Additionally, this can be caused by GIL deadlock or other reasons such as network errors or bugs in the communications library (e.g. NCCL), etc. 
+[rank3]:[E728 11:17:10.997221910 ProcessGroupNCCL.cpp:1628] [PG ID 0 PG GUID 0(default_pg) Rank 3] ProcessGroupNCCL preparing to dump debug info. Include stack trace: 1, only active collectives: 0
+[rank7]:[E728 11:17:10.090798514 ProcessGroupNCCL.cpp:1914] [PG ID 0 PG GUID 0(default_pg) Rank 7] Received a dump signal due to a collective timeout from this local rank and we will try our best to dump the debug info. Last enqueued NCCL work: 500, last completed NCCL work: 499.This is most likely caused by incorrect usages of collectives, e.g., wrong sizes used across ranks, the order of collectives is not same for all ranks or the scheduled collective, for some reason, didn't run. Additionally, this can be caused by GIL deadlock or other reasons such as network errors or bugs in the communications library (e.g. NCCL), etc. 
+[rank7]:[E728 11:17:10.090905797 ProcessGroupNCCL.cpp:1628] [PG ID 0 PG GUID 0(default_pg) Rank 7] ProcessGroupNCCL preparing to dump debug info. Include stack trace: 1, only active collectives: 0
+[rank0]:[E728 11:17:11.475625424 ProcessGroupNCCL.cpp:689] [Rank 0] Watchdog caught collective operation timeout: WorkNCCL(SeqNum=500, OpType=_ALLGATHER_BASE, NumelIn=16528, NumelOut=132224, Timeout(ms)=600000) ran for 600038 milliseconds before timing out.
+[rank0]:[E728 11:17:11.475731367 ProcessGroupNCCL.cpp:2303] [PG ID 0 PG GUID 0(default_pg) Rank 0]  failure detected by watchdog at work sequence id: 500 PG status: last enqueued work: 501, last completed work: 499
+[rank0]:[E728 11:17:11.475950698 ProcessGroupNCCL.cpp:733] Stack trace of the failed collective: 
+#0 all_gather_into_tensor from /root/miniconda3/envs/ltx/lib/python3.10/site-packages/torch/distributed/distributed_c10d.py:4186
+#1 wrapper from /root/miniconda3/envs/ltx/lib/python3.10/site-packages/torch/distributed/c10d_logger.py:83
+#2 _all_gather_flat_param from /root/miniconda3/envs/ltx/lib/python3.10/site-packages/torch/distributed/fsdp/_flat_param.py:1477
+#3 unshard from /root/miniconda3/envs/ltx/lib/python3.10/site-packages/torch/distributed/fsdp/_flat_param.py:1383
+#4 _unshard from /root/miniconda3/envs/ltx/lib/python3.10/site-packages/torch/distributed/fsdp/_runtime_utils.py:305
+#5 _unshard_fsdp_state_params from /root/miniconda3/envs/ltx/lib/python3.10/site-packages/torch/distributed/fsdp/_unshard_param_utils.py:202
+#6 __enter__ from /root/miniconda3/envs/ltx/lib/python3.10/contextlib.py:135
+#7 _enter_unshard_params_ctx from /root/miniconda3/envs/ltx/lib/python3.10/site-packages/torch/distributed/fsdp/_state_dict_utils.py:125
+#8 _common_unshard_pre_state_dict_hook from /root/miniconda3/envs/ltx/lib/python3.10/site-packages/torch/distributed/fsdp/_state_dict_utils.py:161
+#9 _full_pre_state_dict_hook from /root/miniconda3/envs/ltx/lib/python3.10/site-packages/torch/distributed/fsdp/_state_dict_utils.py:295
+#10 _pre_state_dict_hook from /root/miniconda3/envs/ltx/lib/python3.10/site-packages/torch/distributed/fsdp/_state_dict_utils.py:788
+#11 decorate_context from /root/miniconda3/envs/ltx/lib/python3.10/site-packages/torch/utils/_contextlib.py:124
+#12 state_dict from /root/miniconda3/envs/ltx/lib/python3.10/site-packages/torch/nn/modules/module.py:2266
+#13 adapter_state_dict from /root/miniconda3/envs/ltx/lib/python3.10/site-packages/peft/utils/other.py:728
+#14 get_peft_model_state_dict from /root/miniconda3/envs/ltx/lib/python3.10/site-packages/peft/utils/save_and_load.py:245
+#15 _save_checkpoint from /data/vjuicefs_ai_camera_jgroup_acadmic/public_data/11194554/WorkSpace/LTX-2/packages/ltx-trainer/src/ltx_trainer/trainer.py:1439
+#16 train from /data/vjuicefs_ai_camera_jgroup_acadmic/public_data/11194554/WorkSpace/LTX-2/packages/ltx-trainer/src/ltx_trainer/trainer.py:276
+#17 main from /data/vjuicefs_ai_camera_jgroup_acadmic/public_data/11194554/WorkSpace/LTX-2/packages/ltx-trainer/scripts/train.py:59
+#18 wrapper from /root/miniconda3/envs/ltx/lib/python3.10/site-packages/typer/main.py:1514
+#19 invoke from /root/miniconda3/envs/ltx/lib/python3.10/site-packages/click/core.py:877
+#20 invoke from /root/miniconda3/envs/ltx/lib/python3.10/site-packages/click/core.py:1308
+#21 _main from /root/miniconda3/envs/ltx/lib/python3.10/site-packages/typer/core.py:188
+#22 main from /root/miniconda3/envs/ltx/lib/python3.10/site-packages/typer/core.py:708
+#23 __call__ from /root/miniconda3/envs/ltx/lib/python3.10/site-packages/click/core.py:1524
+#24 __call__ from /root/miniconda3/envs/ltx/lib/python3.10/site-packages/typer/main.py:1135
+#25 <module> from /data/vjuicefs_ai_camera_jgroup_acadmic/public_data/11194554/WorkSpace/LTX-2/packages/ltx-trainer/scripts/train.py:63
+
+[rank2]:[E728 11:18:09.397383942 ProcessGroupNCCL.cpp:750] [Rank 2] Some NCCL operations have failed or timed out. Due to the asynchronous nature of CUDA kernels, subsequent GPU operations might run on corrupted/incomplete data.
+[rank2]:[E728 11:18:09.397406668 ProcessGroupNCCL.cpp:764] [Rank 2] To avoid data inconsistency, we are taking the entire process down.
+[rank2]:[E728 11:18:09.399044286 ProcessGroupNCCL.cpp:2119] [PG ID 0 PG GUID 0(default_pg) Rank 2] Process group watchdog thread terminated with exception: [Rank 2] Watchdog caught collective operation timeout: WorkNCCL(SeqNum=500, OpType=ALLREDUCE, NumelIn=1, NumelOut=1, Timeout(ms)=600000) ran for 600031 milliseconds before timing out.
+Exception raised from checkTimeout at /pytorch/torch/csrc/distributed/c10d/ProcessGroupNCCL.cpp:692 (most recent call first):
+frame #0: c10::Error::Error(c10::SourceLocation, std::__cxx11::basic_string<char, std::char_traits<char>, std::allocator<char> >) + 0x9d (0x7f5b98b7205d in /root/miniconda3/envs/ltx/lib/python3.10/site-packages/torch/lib/libc10.so)
+frame #1: c10d::ProcessGroupNCCL::WorkNCCL::checkTimeout(std::optional<std::chrono::duration<long, std::ratio<1l, 1000l> > >) + 0x2a7 (0x7f5aa8d852e7 in /root/miniconda3/envs/ltx/lib/python3.10/site-packages/torch/lib/libtorch_cuda.so)
+frame #2: c10d::ProcessGroupNCCL::Watchdog::runLoop() + 0x17b1 (0x7f5aa8d8a701 in /root/miniconda3/envs/ltx/lib/python3.10/site-packages/torch/lib/libtorch_cuda.so)
+frame #3: c10d::ProcessGroupNCCL::Watchdog::run() + 0x157 (0x7f5aa8d8baf7 in /root/miniconda3/envs/ltx/lib/python3.10/site-packages/torch/lib/libtorch_cuda.so)
+frame #4: <unknown function> + 0xdc253 (0x7f5b6e6b0253 in /usr/lib/x86_64-linux-gnu/libstdc++.so.6)
+frame #5: <unknown function> + 0x94ac3 (0x7f5b9b122ac3 in /usr/lib/x86_64-linux-gnu/libc.so.6)
+frame #6: <unknown function> + 0x126850 (0x7f5b9b1b4850 in /usr/lib/x86_64-linux-gnu/libc.so.6)
+
+terminate called after throwing an instance of 'c10::DistBackendError'
+  what():  [PG ID 0 PG GUID 0(default_pg) Rank 2] Process group watchdog thread terminated with exception: [Rank 2] Watchdog caught collective operation timeout: WorkNCCL(SeqNum=500, OpType=ALLREDUCE, NumelIn=1, NumelOut=1, Timeout(ms)=600000) ran for 600031 milliseconds before timing out.
+Exception raised from checkTimeout at /pytorch/torch/csrc/distributed/c10d/ProcessGroupNCCL.cpp:692 (most recent call first):
+frame #0: c10::Error::Error(c10::SourceLocation, std::__cxx11::basic_string<char, std::char_traits<char>, std::allocator<char> >) + 0x9d (0x7f5b98b7205d in /root/miniconda3/envs/ltx/lib/python3.10/site-packages/torch/lib/libc10.so)
+frame #1: c10d::ProcessGroupNCCL::WorkNCCL::checkTimeout(std::optional<std::chrono::duration<long, std::ratio<1l, 1000l> > >) + 0x2a7 (0x7f5aa8d852e7 in /root/miniconda3/envs/ltx/lib/python3.10/site-packages/torch/lib/libtorch_cuda.so)
+frame #2: c10d::ProcessGroupNCCL::Watchdog::runLoop() + 0x17b1 (0x7f5aa8d8a701 in /root/miniconda3/envs/ltx/lib/python3.10/site-packages/torch/lib/libtorch_cuda.so)
+frame #3: c10d::ProcessGroupNCCL::Watchdog::run() + 0x157 (0x7f5aa8d8baf7 in /root/miniconda3/envs/ltx/lib/python3.10/site-packages/torch/lib/libtorch_cuda.so)
+frame #4: <unknown function> + 0xdc253 (0x7f5b6e6b0253 in /usr/lib/x86_64-linux-gnu/libstdc++.so.6)
+frame #5: <unknown function> + 0x94ac3 (0x7f5b9b122ac3 in /usr/lib/x86_64-linux-gnu/libc.so.6)
+frame #6: <unknown function> + 0x126850 (0x7f5b9b1b4850 in /usr/lib/x86_64-linux-gnu/libc.so.6)
+
+Exception raised from run at /pytorch/torch/csrc/distributed/c10d/ProcessGroupNCCL.cpp:2125 (most recent call first):
+frame #0: c10::Error::Error(c10::SourceLocation, std::__cxx11::basic_string<char, std::char_traits<char>, std::allocator<char> >) + 0x9d (0x7f5b98b7205d in /root/miniconda3/envs/ltx/lib/python3.10/site-packages/torch/lib/libc10.so)
+frame #1: <unknown function> + 0xed3359 (0x7f5aa8817359 in /root/miniconda3/envs/ltx/lib/python3.10/site-packages/torch/lib/libtorch_cuda.so)
+frame #2: <unknown function> + 0xdc253 (0x7f5b6e6b0253 in /usr/lib/x86_64-linux-gnu/libstdc++.so.6)
+frame #3: <unknown function> + 0x94ac3 (0x7f5b9b122ac3 in /usr/lib/x86_64-linux-gnu/libc.so.6)
+frame #4: <unknown function> + 0x126850 (0x7f5b9b1b4850 in /usr/lib/x86_64-linux-gnu/libc.so.6)
+
+[rank3]:[E728 11:18:09.407353177 ProcessGroupNCCL.cpp:750] [Rank 3] Some NCCL operations have failed or timed out. Due to the asynchronous nature of CUDA kernels, subsequent GPU operations might run on corrupted/incomplete data.
+[rank3]:[E728 11:18:09.407372450 ProcessGroupNCCL.cpp:764] [Rank 3] To avoid data inconsistency, we are taking the entire process down.
+[rank3]:[E728 11:18:09.408956965 ProcessGroupNCCL.cpp:2119] [PG ID 0 PG GUID 0(default_pg) Rank 3] Process group watchdog thread terminated with exception: [Rank 3] Watchdog caught collective operation timeout: WorkNCCL(SeqNum=500, OpType=ALLREDUCE, NumelIn=1, NumelOut=1, Timeout(ms)=600000) ran for 600031 milliseconds before timing out.
+Exception raised from checkTimeout at /pytorch/torch/csrc/distributed/c10d/ProcessGroupNCCL.cpp:692 (most recent call first):
+frame #0: c10::Error::Error(c10::SourceLocation, std::__cxx11::basic_string<char, std::char_traits<char>, std::allocator<char> >) + 0x9d (0x7ff45217205d in /root/miniconda3/envs/ltx/lib/python3.10/site-packages/torch/lib/libc10.so)
+frame #1: c10d::ProcessGroupNCCL::WorkNCCL::checkTimeout(std::optional<std::chrono::duration<long, std::ratio<1l, 1000l> > >) + 0x2a7 (0x7ff3623852e7 in /root/miniconda3/envs/ltx/lib/python3.10/site-packages/torch/lib/libtorch_cuda.so)
+frame #2: c10d::ProcessGroupNCCL::Watchdog::runLoop() + 0x17b1 (0x7ff36238a701 in /root/miniconda3/envs/ltx/lib/python3.10/site-packages/torch/lib/libtorch_cuda.so)
+frame #3: c10d::ProcessGroupNCCL::Watchdog::run() + 0x157 (0x7ff36238baf7 in /root/miniconda3/envs/ltx/lib/python3.10/site-packages/torch/lib/libtorch_cuda.so)
+frame #4: <unknown function> + 0xdc253 (0x7ff427cb0253 in /usr/lib/x86_64-linux-gnu/libstdc++.so.6)
+frame #5: <unknown function> + 0x94ac3 (0x7ff4546a4ac3 in /usr/lib/x86_64-linux-gnu/libc.so.6)
+frame #6: <unknown function> + 0x126850 (0x7ff454736850 in /usr/lib/x86_64-linux-gnu/libc.so.6)
+
+terminate called after throwing an instance of 'c10::DistBackendError'
+  what():  [PG ID 0 PG GUID 0(default_pg) Rank 3] Process group watchdog thread terminated with exception: [Rank 3] Watchdog caught collective operation timeout: WorkNCCL(SeqNum=500, OpType=ALLREDUCE, NumelIn=1, NumelOut=1, Timeout(ms)=600000) ran for 600031 milliseconds before timing out.
+Exception raised from checkTimeout at /pytorch/torch/csrc/distributed/c10d/ProcessGroupNCCL.cpp:692 (most recent call first):
+frame #0: c10::Error::Error(c10::SourceLocation, std::__cxx11::basic_string<char, std::char_traits<char>, std::allocator<char> >) + 0x9d (0x7ff45217205d in /root/miniconda3/envs/ltx/lib/python3.10/site-packages/torch/lib/libc10.so)
+frame #1: c10d::ProcessGroupNCCL::WorkNCCL::checkTimeout(std::optional<std::chrono::duration<long, std::ratio<1l, 1000l> > >) + 0x2a7 (0x7ff3623852e7 in /root/miniconda3/envs/ltx/lib/python3.10/site-packages/torch/lib/libtorch_cuda.so)
+frame #2: c10d::ProcessGroupNCCL::Watchdog::runLoop() + 0x17b1 (0x7ff36238a701 in /root/miniconda3/envs/ltx/lib/python3.10/site-packages/torch/lib/libtorch_cuda.so)
+frame #3: c10d::ProcessGroupNCCL::Watchdog::run() + 0x157 (0x7ff36238baf7 in /root/miniconda3/envs/ltx/lib/python3.10/site-packages/torch/lib/libtorch_cuda.so)
+frame #4: <unknown function> + 0xdc253 (0x7ff427cb0253 in /usr/lib/x86_64-linux-gnu/libstdc++.so.6)
+frame #5: <unknown function> + 0x94ac3 (0x7ff4546a4ac3 in /usr/lib/x86_64-linux-gnu/libc.so.6)
+frame #6: <unknown function> + 0x126850 (0x7ff454736850 in /usr/lib/x86_64-linux-gnu/libc.so.6)
+
+Exception raised from run at /pytorch/torch/csrc/distributed/c10d/ProcessGroupNCCL.cpp:2125 (most recent call first):
+frame #0: c10::Error::Error(c10::SourceLocation, std::__cxx11::basic_string<char, std::char_traits<char>, std::allocator<char> >) + 0x9d (0x7ff45217205d in /root/miniconda3/envs/ltx/lib/python3.10/site-packages/torch/lib/libc10.so)
+frame #1: <unknown function> + 0xed3359 (0x7ff361e17359 in /root/miniconda3/envs/ltx/lib/python3.10/site-packages/torch/lib/libtorch_cuda.so)
+frame #2: <unknown function> + 0xdc253 (0x7ff427cb0253 in /usr/lib/x86_64-linux-gnu/libstdc++.so.6)
+frame #3: <unknown function> + 0x94ac3 (0x7ff4546a4ac3 in /usr/lib/x86_64-linux-gnu/libc.so.6)
+frame #4: <unknown function> + 0x126850 (0x7ff454736850 in /usr/lib/x86_64-linux-gnu/libc.so.6)
+
+[rank6]:[E728 11:18:09.456634286 ProcessGroupNCCL.cpp:750] [Rank 6] Some NCCL operations have failed or timed out. Due to the asynchronous nature of CUDA kernels, subsequent GPU operations might run on corrupted/incomplete data.
+[rank6]:[E728 11:18:09.456649081 ProcessGroupNCCL.cpp:764] [Rank 6] To avoid data inconsistency, we are taking the entire process down.
+[rank4]:[E728 11:18:09.456734065 ProcessGroupNCCL.cpp:750] [Rank 4] Some NCCL operations have failed or timed out. Due to the asynchronous nature of CUDA kernels, subsequent GPU operations might run on corrupted/incomplete data.
+[rank4]:[E728 11:18:09.456750091 ProcessGroupNCCL.cpp:764] [Rank 4] To avoid data inconsistency, we are taking the entire process down.
+[rank6]:[E728 11:18:10.458157373 ProcessGroupNCCL.cpp:2119] [PG ID 0 PG GUID 0(default_pg) Rank 6] Process group watchdog thread terminated with exception: [Rank 6] Watchdog caught collective operation timeout: WorkNCCL(SeqNum=500, OpType=ALLREDUCE, NumelIn=1, NumelOut=1, Timeout(ms)=600000) ran for 600031 milliseconds before timing out.
+Exception raised from checkTimeout at /pytorch/torch/csrc/distributed/c10d/ProcessGroupNCCL.cpp:692 (most recent call first):
+frame #0: c10::Error::Error(c10::SourceLocation, std::__cxx11::basic_string<char, std::char_traits<char>, std::allocator<char> >) + 0x9d (0x7fa1d7d7205d in /root/miniconda3/envs/ltx/lib/python3.10/site-packages/torch/lib/libc10.so)
+frame #1: c10d::ProcessGroupNCCL::WorkNCCL::checkTimeout(std::optional<std::chrono::duration<long, std::ratio<1l, 1000l> > >) + 0x2a7 (0x7fa0e7b852e7 in /root/miniconda3/envs/ltx/lib/python3.10/site-packages/torch/lib/libtorch_cuda.so)
+frame #2: c10d::ProcessGroupNCCL::Watchdog::runLoop() + 0x17b1 (0x7fa0e7b8a701 in /root/miniconda3/envs/ltx/lib/python3.10/site-packages/torch/lib/libtorch_cuda.so)
+frame #3: c10d::ProcessGroupNCCL::Watchdog::run() + 0x157 (0x7fa0e7b8baf7 in /root/miniconda3/envs/ltx/lib/python3.10/site-packages/torch/lib/libtorch_cuda.so)
+frame #4: <unknown function> + 0xdc253 (0x7fa1ad4b0253 in /usr/lib/x86_64-linux-gnu/libstdc++.so.6)
+frame #5: <unknown function> + 0x94ac3 (0x7fa1d9ff1ac3 in /usr/lib/x86_64-linux-gnu/libc.so.6)
+frame #6: <unknown function> + 0x126850 (0x7fa1da083850 in /usr/lib/x86_64-linux-gnu/libc.so.6)
+
+terminate called after throwing an instance of 'c10::DistBackendError'
+[rank4]:[E728 11:18:10.458326184 ProcessGroupNCCL.cpp:2119] [PG ID 0 PG GUID 0(default_pg) Rank 4] Process group watchdog thread terminated with exception: [Rank 4] Watchdog caught collective operation timeout: WorkNCCL(SeqNum=500, OpType=ALLREDUCE, NumelIn=1, NumelOut=1, Timeout(ms)=600000) ran for 600030 milliseconds before timing out.
+Exception raised from checkTimeout at /pytorch/torch/csrc/distributed/c10d/ProcessGroupNCCL.cpp:692 (most recent call first):
+frame #0: c10::Error::Error(c10::SourceLocation, std::__cxx11::basic_string<char, std::char_traits<char>, std::allocator<char> >) + 0x9d (0x7fb12537205d in /root/miniconda3/envs/ltx/lib/python3.10/site-packages/torch/lib/libc10.so)
+frame #1: c10d::ProcessGroupNCCL::WorkNCCL::checkTimeout(std::optional<std::chrono::duration<long, std::ratio<1l, 1000l> > >) + 0x2a7 (0x7fb0355852e7 in /root/miniconda3/envs/ltx/lib/python3.10/site-packages/torch/lib/libtorch_cuda.so)
+frame #2: c10d::ProcessGroupNCCL::Watchdog::runLoop() + 0x17b1 (0x7fb03558a701 in /root/miniconda3/envs/ltx/lib/python3.10/site-packages/torch/lib/libtorch_cuda.so)
+frame #3: c10d::ProcessGroupNCCL::Watchdog::run() + 0x157 (0x7fb03558baf7 in /root/miniconda3/envs/ltx/lib/python3.10/site-packages/torch/lib/libtorch_cuda.so)
+frame #4: <unknown function> + 0xdc253 (0x7fb0faeb0253 in /usr/lib/x86_64-linux-gnu/libstdc++.so.6)
+frame #5: <unknown function> + 0x94ac3 (0x7fb127922ac3 in /usr/lib/x86_64-linux-gnu/libc.so.6)
+frame #6: <unknown function> + 0x126850 (0x7fb1279b4850 in /usr/lib/x86_64-linux-gnu/libc.so.6)
+
+terminate called after throwing an instance of 'c10::DistBackendError'
+  what():  [PG ID 0 PG GUID 0(default_pg) Rank 6] Process group watchdog thread terminated with exception: [Rank 6] Watchdog caught collective operation timeout: WorkNCCL(SeqNum=500, OpType=ALLREDUCE, NumelIn=1, NumelOut=1, Timeout(ms)=600000) ran for 600031 milliseconds before timing out.
+Exception raised from checkTimeout at /pytorch/torch/csrc/distributed/c10d/ProcessGroupNCCL.cpp:692 (most recent call first):
+frame #0: c10::Error::Error(c10::SourceLocation, std::__cxx11::basic_string<char, std::char_traits<char>, std::allocator<char> >) + 0x9d (0x7fa1d7d7205d in /root/miniconda3/envs/ltx/lib/python3.10/site-packages/torch/lib/libc10.so)
+frame #1: c10d::ProcessGroupNCCL::WorkNCCL::checkTimeout(std::optional<std::chrono::duration<long, std::ratio<1l, 1000l> > >) + 0x2a7 (0x7fa0e7b852e7 in /root/miniconda3/envs/ltx/lib/python3.10/site-packages/torch/lib/libtorch_cuda.so)
+frame #2: c10d::ProcessGroupNCCL::Watchdog::runLoop() + 0x17b1 (0x7fa0e7b8a701 in /root/miniconda3/envs/ltx/lib/python3.10/site-packages/torch/lib/libtorch_cuda.so)
+frame #3: c10d::ProcessGroupNCCL::Watchdog::run() + 0x157 (0x7fa0e7b8baf7 in /root/miniconda3/envs/ltx/lib/python3.10/site-packages/torch/lib/libtorch_cuda.so)
+frame #4: <unknown function> + 0xdc253 (0x7fa1ad4b0253 in /usr/lib/x86_64-linux-gnu/libstdc++.so.6)
+frame #5: <unknown function> + 0x94ac3 (0x7fa1d9ff1ac3 in /usr/lib/x86_64-linux-gnu/libc.so.6)
+frame #6: <unknown function> + 0x126850 (0x7fa1da083850 in /usr/lib/x86_64-linux-gnu/libc.so.6)
+
+Exception raised from run at /pytorch/torch/csrc/distributed/c10d/ProcessGroupNCCL.cpp:2125 (most recent call first):
+frame #0: c10::Error::Error(c10::SourceLocation, std::__cxx11::basic_string<char, std::char_traits<char>, std::allocator<char> >) + 0x9d (0x7fa1d7d7205d in /root/miniconda3/envs/ltx/lib/python3.10/site-packages/torch/lib/libc10.so)
+frame #1: <unknown function> + 0xed3359 (0x7fa0e7617359 in /root/miniconda3/envs/ltx/lib/python3.10/site-packages/torch/lib/libtorch_cuda.so)
+frame #2: <unknown function> + 0xdc253 (0x7fa1ad4b0253 in /usr/lib/x86_64-linux-gnu/libstdc++.so.6)
+frame #3: <unknown function> + 0x94ac3 (0x7fa1d9ff1ac3 in /usr/lib/x86_64-linux-gnu/libc.so.6)
+frame #4: <unknown function> + 0x126850 (0x7fa1da083850 in /usr/lib/x86_64-linux-gnu/libc.so.6)
+
+  what():  [PG ID 0 PG GUID 0(default_pg) Rank 4] Process group watchdog thread terminated with exception: [Rank 4] Watchdog caught collective operation timeout: WorkNCCL(SeqNum=500, OpType=ALLREDUCE, NumelIn=1, NumelOut=1, Timeout(ms)=600000) ran for 600030 milliseconds before timing out.
+Exception raised from checkTimeout at /pytorch/torch/csrc/distributed/c10d/ProcessGroupNCCL.cpp:692 (most recent call first):
+frame #0: c10::Error::Error(c10::SourceLocation, std::__cxx11::basic_string<char, std::char_traits<char>, std::allocator<char> >) + 0x9d (0x7fb12537205d in /root/miniconda3/envs/ltx/lib/python3.10/site-packages/torch/lib/libc10.so)
+frame #1: c10d::ProcessGroupNCCL::WorkNCCL::checkTimeout(std::optional<std::chrono::duration<long, std::ratio<1l, 1000l> > >) + 0x2a7 (0x7fb0355852e7 in /root/miniconda3/envs/ltx/lib/python3.10/site-packages/torch/lib/libtorch_cuda.so)
+frame #2: c10d::ProcessGroupNCCL::Watchdog::runLoop() + 0x17b1 (0x7fb03558a701 in /root/miniconda3/envs/ltx/lib/python3.10/site-packages/torch/lib/libtorch_cuda.so)
+frame #3: c10d::ProcessGroupNCCL::Watchdog::run() + 0x157 (0x7fb03558baf7 in /root/miniconda3/envs/ltx/lib/python3.10/site-packages/torch/lib/libtorch_cuda.so)
+frame #4: <unknown function> + 0xdc253 (0x7fb0faeb0253 in /usr/lib/x86_64-linux-gnu/libstdc++.so.6)
+frame #5: <unknown function> + 0x94ac3 (0x7fb127922ac3 in /usr/lib/x86_64-linux-gnu/libc.so.6)
+frame #6: <unknown function> + 0x126850 (0x7fb1279b4850 in /usr/lib/x86_64-linux-gnu/libc.so.6)
+
+Exception raised from run at /pytorch/torch/csrc/distributed/c10d/ProcessGroupNCCL.cpp:2125 (most recent call first):
+frame #0: c10::Error::Error(c10::SourceLocation, std::__cxx11::basic_string<char, std::char_traits<char>, std::allocator<char> >) + 0x9d (0x7fb12537205d in /root/miniconda3/envs/ltx/lib/python3.10/site-packages/torch/lib/libc10.so)
+frame #1: <unknown function> + 0xed3359 (0x7fb035017359 in /root/miniconda3/envs/ltx/lib/python3.10/site-packages/torch/lib/libtorch_cuda.so)
+frame #2: <unknown function> + 0xdc253 (0x7fb0faeb0253 in /usr/lib/x86_64-linux-gnu/libstdc++.so.6)
+frame #3: <unknown function> + 0x94ac3 (0x7fb127922ac3 in /usr/lib/x86_64-linux-gnu/libc.so.6)
+frame #4: <unknown function> + 0x126850 (0x7fb1279b4850 in /usr/lib/x86_64-linux-gnu/libc.so.6)
+
+[rank5]:[E728 11:18:10.725553466 ProcessGroupNCCL.cpp:750] [Rank 5] Some NCCL operations have failed or timed out. Due to the asynchronous nature of CUDA kernels, subsequent GPU operations might run on corrupted/incomplete data.
+[rank5]:[E728 11:18:10.725576829 ProcessGroupNCCL.cpp:764] [Rank 5] To avoid data inconsistency, we are taking the entire process down.
+[rank5]:[E728 11:18:10.727096486 ProcessGroupNCCL.cpp:2119] [PG ID 0 PG GUID 0(default_pg) Rank 5] Process group watchdog thread terminated with exception: [Rank 5] Watchdog caught collective operation timeout: WorkNCCL(SeqNum=500, OpType=ALLREDUCE, NumelIn=1, NumelOut=1, Timeout(ms)=600000) ran for 600089 milliseconds before timing out.
+Exception raised from checkTimeout at /pytorch/torch/csrc/distributed/c10d/ProcessGroupNCCL.cpp:692 (most recent call first):
+frame #0: c10::Error::Error(c10::SourceLocation, std::__cxx11::basic_string<char, std::char_traits<char>, std::allocator<char> >) + 0x9d (0x7f931277205d in /root/miniconda3/envs/ltx/lib/python3.10/site-packages/torch/lib/libc10.so)
+frame #1: c10d::ProcessGroupNCCL::WorkNCCL::checkTimeout(std::optional<std::chrono::duration<long, std::ratio<1l, 1000l> > >) + 0x2a7 (0x7f92225852e7 in /root/miniconda3/envs/ltx/lib/python3.10/site-packages/torch/lib/libtorch_cuda.so)
+frame #2: c10d::ProcessGroupNCCL::Watchdog::runLoop() + 0x17b1 (0x7f922258a701 in /root/miniconda3/envs/ltx/lib/python3.10/site-packages/torch/lib/libtorch_cuda.so)
+frame #3: c10d::ProcessGroupNCCL::Watchdog::run() + 0x157 (0x7f922258baf7 in /root/miniconda3/envs/ltx/lib/python3.10/site-packages/torch/lib/libtorch_cuda.so)
+frame #4: <unknown function> + 0xdc253 (0x7f92e7eb0253 in /usr/lib/x86_64-linux-gnu/libstdc++.so.6)
+frame #5: <unknown function> + 0x94ac3 (0x7f9314a59ac3 in /usr/lib/x86_64-linux-gnu/libc.so.6)
+frame #6: <unknown function> + 0x126850 (0x7f9314aeb850 in /usr/lib/x86_64-linux-gnu/libc.so.6)
+
+terminate called after throwing an instance of 'c10::DistBackendError'
+  what():  [PG ID 0 PG GUID 0(default_pg) Rank 5] Process group watchdog thread terminated with exception: [Rank 5] Watchdog caught collective operation timeout: WorkNCCL(SeqNum=500, OpType=ALLREDUCE, NumelIn=1, NumelOut=1, Timeout(ms)=600000) ran for 600089 milliseconds before timing out.
+Exception raised from checkTimeout at /pytorch/torch/csrc/distributed/c10d/ProcessGroupNCCL.cpp:692 (most recent call first):
+frame #0: c10::Error::Error(c10::SourceLocation, std::__cxx11::basic_string<char, std::char_traits<char>, std::allocator<char> >) + 0x9d (0x7f931277205d in /root/miniconda3/envs/ltx/lib/python3.10/site-packages/torch/lib/libc10.so)
+frame #1: c10d::ProcessGroupNCCL::WorkNCCL::checkTimeout(std::optional<std::chrono::duration<long, std::ratio<1l, 1000l> > >) + 0x2a7 (0x7f92225852e7 in /root/miniconda3/envs/ltx/lib/python3.10/site-packages/torch/lib/libtorch_cuda.so)
+frame #2: c10d::ProcessGroupNCCL::Watchdog::runLoop() + 0x17b1 (0x7f922258a701 in /root/miniconda3/envs/ltx/lib/python3.10/site-packages/torch/lib/libtorch_cuda.so)
+frame #3: c10d::ProcessGroupNCCL::Watchdog::run() + 0x157 (0x7f922258baf7 in /root/miniconda3/envs/ltx/lib/python3.10/site-packages/torch/lib/libtorch_cuda.so)
+frame #4: <unknown function> + 0xdc253 (0x7f92e7eb0253 in /usr/lib/x86_64-linux-gnu/libstdc++.so.6)
+frame #5: <unknown function> + 0x94ac3 (0x7f9314a59ac3 in /usr/lib/x86_64-linux-gnu/libc.so.6)
+frame #6: <unknown function> + 0x126850 (0x7f9314aeb850 in /usr/lib/x86_64-linux-gnu/libc.so.6)
+
+Exception raised from run at /pytorch/torch/csrc/distributed/c10d/ProcessGroupNCCL.cpp:2125 (most recent call first):
+frame #0: c10::Error::Error(c10::SourceLocation, std::__cxx11::basic_string<char, std::char_traits<char>, std::allocator<char> >) + 0x9d (0x7f931277205d in /root/miniconda3/envs/ltx/lib/python3.10/site-packages/torch/lib/libc10.so)
+frame #1: <unknown function> + 0xed3359 (0x7f9222017359 in /root/miniconda3/envs/ltx/lib/python3.10/site-packages/torch/lib/libtorch_cuda.so)
+frame #2: <unknown function> + 0xdc253 (0x7f92e7eb0253 in /usr/lib/x86_64-linux-gnu/libstdc++.so.6)
+frame #3: <unknown function> + 0x94ac3 (0x7f9314a59ac3 in /usr/lib/x86_64-linux-gnu/libc.so.6)
+frame #4: <unknown function> + 0x126850 (0x7f9314aeb850 in /usr/lib/x86_64-linux-gnu/libc.so.6)
+
+W0728 11:18:10.937000 3635096 site-packages/torch/distributed/elastic/multiprocessing/api.py:1012] Sending process 3635163 closing signal SIGTERM
+W0728 11:18:10.938000 3635096 site-packages/torch/distributed/elastic/multiprocessing/api.py:1012] Sending process 3635164 closing signal SIGTERM
+W0728 11:18:10.939000 3635096 site-packages/torch/distributed/elastic/multiprocessing/api.py:1012] Sending process 3635165 closing signal SIGTERM
+W0728 11:18:10.939000 3635096 site-packages/torch/distributed/elastic/multiprocessing/api.py:1012] Sending process 3635167 closing signal SIGTERM
+W0728 11:18:10.939000 3635096 site-packages/torch/distributed/elastic/multiprocessing/api.py:1012] Sending process 3635168 closing signal SIGTERM
+W0728 11:18:10.940000 3635096 site-packages/torch/distributed/elastic/multiprocessing/api.py:1012] Sending process 3635169 closing signal SIGTERM
+W0728 11:18:10.940000 3635096 site-packages/torch/distributed/elastic/multiprocessing/api.py:1012] Sending process 3635170 closing signal SIGTERM
+W0728 11:18:40.941000 3635096 site-packages/torch/distributed/elastic/multiprocessing/api.py:1031] Unable to shutdown process 3635165 via Signals.SIGTERM, forcefully exiting via Signals.SIGKILL
+W0728 11:18:45.111000 3635096 site-packages/torch/distributed/elastic/multiprocessing/api.py:1031] Unable to shutdown process 3635167 via Signals.SIGTERM, forcefully exiting via Signals.SIGKILL
+W0728 11:18:49.268000 3635096 site-packages/torch/distributed/elastic/multiprocessing/api.py:1031] Unable to shutdown process 3635169 via Signals.SIGTERM, forcefully exiting via Signals.SIGKILL
+E0728 11:18:53.288000 3635096 site-packages/torch/distributed/elastic/multiprocessing/api.py:986] failed (exitcode: -6) local_rank: 3 (pid: 3635166) of binary: /root/miniconda3/envs/ltx/bin/python3.10
+Traceback (most recent call last):
+  File "/root/miniconda3/envs/ltx/bin/accelerate", line 6, in <module>
+    sys.exit(main())
+  File "/root/miniconda3/envs/ltx/lib/python3.10/site-packages/accelerate/commands/accelerate_cli.py", line 50, in main
+    args.func(args)
+  File "/root/miniconda3/envs/ltx/lib/python3.10/site-packages/accelerate/commands/launch.py", line 1392, in launch_command
+    multi_gpu_launcher(args)
+  File "/root/miniconda3/envs/ltx/lib/python3.10/site-packages/accelerate/commands/launch.py", line 1023, in multi_gpu_launcher
+    distrib_run.run(args)
+  File "/root/miniconda3/envs/ltx/lib/python3.10/site-packages/torch/distributed/run.py", line 981, in run
+    elastic_launch(
+  File "/root/miniconda3/envs/ltx/lib/python3.10/site-packages/torch/distributed/launcher/api.py", line 170, in __call__
+    return launch_agent(self._config, self._entrypoint, list(args))
+  File "/root/miniconda3/envs/ltx/lib/python3.10/site-packages/torch/distributed/launcher/api.py", line 317, in launch_agent
+    raise ChildFailedError(
+torch.distributed.elastic.multiprocessing.errors.ChildFailedError: 
+=========================================================
+scripts/train.py FAILED
+---------------------------------------------------------
+Failures:
+[1]:
+  time      : 2026-07-28_11:18:53
+  host      : custom-20260413030642291-worker-0
+  rank      : 0 (local_rank: 0)
+  exitcode  : -15 (pid: 3635163)
+  error_file: <N/A>
+  traceback : Signal 15 (SIGTERM) received by PID 3635163
+[2]:
+  time      : 2026-07-28_11:18:53
+  host      : custom-20260413030642291-worker-0
+  rank      : 1 (local_rank: 1)
+  exitcode  : -15 (pid: 3635164)
+  error_file: <N/A>
+  traceback : Signal 15 (SIGTERM) received by PID 3635164
+[3]:
+  time      : 2026-07-28_11:18:53
+  host      : custom-20260413030642291-worker-0
+  rank      : 2 (local_rank: 2)
+  exitcode  : -9 (pid: 3635165)
+  error_file: <N/A>
+  traceback : Signal 9 (SIGKILL) received by PID 3635165
+[4]:
+  time      : 2026-07-28_11:18:53
+  host      : custom-20260413030642291-worker-0
+  rank      : 4 (local_rank: 4)
+  exitcode  : -9 (pid: 3635167)
+  error_file: <N/A>
+  traceback : Signal 9 (SIGKILL) received by PID 3635167
+[5]:
+  time      : 2026-07-28_11:18:53
+  host      : custom-20260413030642291-worker-0
+  rank      : 5 (local_rank: 5)
+  exitcode  : -6 (pid: 3635168)
+  error_file: <N/A>
+  traceback : Signal 6 (SIGABRT) received by PID 3635168
+[6]:
+  time      : 2026-07-28_11:18:53
+  host      : custom-20260413030642291-worker-0
+  rank      : 6 (local_rank: 6)
+  exitcode  : -9 (pid: 3635169)
+  error_file: <N/A>
+  traceback : Signal 9 (SIGKILL) received by PID 3635169
+[7]:
+  time      : 2026-07-28_11:18:53
+  host      : custom-20260413030642291-worker-0
+  rank      : 7 (local_rank: 7)
+  exitcode  : -15 (pid: 3635170)
+  error_file: <N/A>
+  traceback : Signal 15 (SIGTERM) received by PID 3635170
+---------------------------------------------------------
+Root Cause (first observed failure):
+[0]:
+  time      : 2026-07-28_11:18:10
+  host      : custom-20260413030642291-worker-0
+  rank      : 3 (local_rank: 3)
+  exitcode  : -6 (pid: 3635166)
+  error_file: <N/A>
+  traceback : Signal 6 (SIGABRT) received by PID 3635166
+=========================================================
+(ltx) root@custom-20260413030642291-worker-0:/data/vjuicefs_ai_camera_jgroup_acadmic/public_data/11194554/WorkSpace/LTX-2/packages/ltx-trainer# 
+(ltx) root@custom-20260413030642291-worker-0:/data/vjuicefs_ai_camera_jgroup_acadmic/public_data/11194554/WorkSpace/LTX-2/packages/ltx-trainer# 
