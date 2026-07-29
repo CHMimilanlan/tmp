@@ -198,6 +198,8 @@ python pipeline/ic_lora_customize_batch.py \
 ```
 
 命令行中的尺寸、帧数、帧率和 seed 是默认值；JSON 中的同名字段优先。
+批量模式不需要额外传入命令行 `--prompt`，因为每个样例的 prompt 已经定义在
+JSON 中；`--prompt` 只在不使用 `--batch-json` 的单样例模式下为必填参数。
 
 ### 5.2 只启用 Track-PRoPE
 

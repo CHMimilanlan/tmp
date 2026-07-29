@@ -504,6 +504,17 @@ def main() -> None:
     checkpoint_path = detect_checkpoint_path(distilled=True)
     params = detect_params(checkpoint_path)
     parser = default_2_stage_distilled_arg_parser(params=params)
+    # The upstream single-sample parser marks --prompt as required. Batch
+    # manifests provide a prompt per sample, so argparse must not reject the
+    # command before we have a chance to inspect --batch-json. Single-sample
+    # mode is validated explicitly after parsing below.
+    prompt_action = next(
+        (action for action in parser._actions if action.dest == "prompt"),
+        None,
+    )
+    if prompt_action is None:
+        raise RuntimeError("The LTX argument parser does not define --prompt")
+    prompt_action.required = False
     parser.add_argument(
         "--video-conditioning",
         action=VideoConditioningAction,
@@ -545,8 +556,11 @@ def main() -> None:
     )
     args = parser.parse_args()
 
-    if args.batch_json is None and not args.video_conditioning:
-        parser.error("--video-conditioning is required when --batch-json is not used")
+    if args.batch_json is None:
+        if not args.prompt:
+            parser.error("--prompt is required when --batch-json is not used")
+        if not args.video_conditioning:
+            parser.error("--video-conditioning is required when --batch-json is not used")
 
     # Load mask video if provided via --conditioning-attention-mask
     conditioning_attention_mask = None
