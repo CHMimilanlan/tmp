@@ -1,0 +1,176 @@
+Training 0/8000 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ Starting... 0:00:00 ETA: --:--
+Sampling 1/1    ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ step 0/30   0:00:00 ETA: --:--
+Traceback (most recent call last):
+  File "/data/vjuicefs_ai_camera_jgroup_acadmic/public_data/11194554/WorkSpace/LTX-2/packages/ltx-trainer/scripts/train.py", line 63, in <module>
+    app()
+  File "/root/miniconda3/envs/ltx/lib/python3.10/site-packages/typer/main.py", line 1152, in __call__
+    raise e
+  File "/root/miniconda3/envs/ltx/lib/python3.10/site-packages/typer/main.py", line 1135, in __call__
+    return get_command(self)(*args, **kwargs)
+[rank1]: Traceback (most recent call last):
+[rank1]:   File "/data/vjuicefs_ai_camera_jgroup_acadmic/public_data/11194554/WorkSpace/LTX-2/packages/ltx-trainer/scripts/train.py", line 63, in <module>
+[rank1]:     app()
+[rank1]:   File "/root/miniconda3/envs/ltx/lib/python3.10/site-packages/typer/main.py", line 1152, in __call__
+[rank1]:     raise e
+[rank1]:   File "/root/miniconda3/envs/ltx/lib/python3.10/site-packages/typer/main.py", line 1135, in __call__
+[rank1]:     return get_command(self)(*args, **kwargs)
+[rank1]:   File "/root/miniconda3/envs/ltx/lib/python3.10/site-packages/click/core.py", line 1442, in __call__
+[rank1]:     return self.main(*args, **kwargs)
+[rank1]:   File "/root/miniconda3/envs/ltx/lib/python3.10/site-packages/typer/core.py", line 709, in main
+[rank1]:     return _main(
+[rank1]:   File "/root/miniconda3/envs/ltx/lib/python3.10/site-packages/typer/core.py", line 188, in _main
+[rank1]:     rv = self.invoke(ctx)
+[rank1]:   File "/root/miniconda3/envs/ltx/lib/python3.10/site-packages/click/core.py", line 1226, in invoke
+[rank1]:     return ctx.invoke(self.callback, **ctx.params)
+[rank1]:   File "/root/miniconda3/envs/ltx/lib/python3.10/site-packages/click/core.py", line 794, in invoke
+[rank1]:     return callback(*args, **kwargs)
+[rank1]:   File "/root/miniconda3/envs/ltx/lib/python3.10/site-packages/typer/main.py", line 1514, in wrapper
+[rank1]:     return callback(**use_params)
+[rank1]:   File "/data/vjuicefs_ai_camera_jgroup_acadmic/public_data/11194554/WorkSpace/LTX-2/packages/ltx-trainer/scripts/train.py", line 59, in main
+[rank1]:     trainer.train(disable_progress_bars=disable_progress_bars)
+[rank1]:   File "/data/vjuicefs_ai_camera_jgroup_acadmic/public_data/11194554/WorkSpace/LTX-2/packages/ltx-trainer/src/ltx_trainer/trainer.py", line 228, in train
+[rank1]:     sampled_videos_paths = self._run_validation(progress)
+[rank1]:   File "/data/vjuicefs_ai_camera_jgroup_acadmic/public_data/11194554/WorkSpace/LTX-2/packages/ltx-trainer/src/ltx_trainer/trainer.py", line 1406, in _run_validation
+[rank1]:     sampled = self._validation_runner.run(
+[rank1]:   File "/root/miniconda3/envs/ltx/lib/python3.10/site-packages/torch/utils/_contextlib.py", line 120, in decorate_context
+[rank1]:     return func(*args, **kwargs)
+[rank1]:   File "/data/vjuicefs_ai_camera_jgroup_acadmic/public_data/11194554/WorkSpace/LTX-2/packages/ltx-trainer/src/ltx_trainer/gpu_utils.py", line 62, in wrapper
+[rank1]:     return func(*args, **kwargs)
+[rank1]:   File "/data/vjuicefs_ai_camera_jgroup_acadmic/public_data/11194554/WorkSpace/LTX-2/packages/ltx-trainer/src/ltx_trainer/validation_runner_bakcup.py", line 201, in run
+[rank1]:     video, audio = self._generate_sample(
+[rank1]:   File "/data/vjuicefs_ai_camera_jgroup_acadmic/public_data/11194554/WorkSpace/LTX-2/packages/ltx-trainer/src/ltx_trainer/validation_runner.py", line 447, in _generate_sample
+[rank1]:     return super()._generate_sample(
+[rank1]:   File "/data/vjuicefs_ai_camera_jgroup_acadmic/public_data/11194554/WorkSpace/LTX-2/packages/ltx-trainer/src/ltx_trainer/validation_runner_bakcup.py", line 554, in _generate_sample
+[rank1]:     audio_state = self._apply_customize_audio_conditionings(audio_state, audio_tools, video_tools, sample, cached_media, device, transformer)
+[rank1]:   File "/data/vjuicefs_ai_camera_jgroup_acadmic/public_data/11194554/WorkSpace/LTX-2/packages/ltx-trainer/src/ltx_trainer/validation_runner_bakcup.py", line 729, in _apply_customize_audio_conditionings
+[rank1]:     latent = transformer.spatial_track_encoder(video_latent)
+[rank1]:   File "/root/miniconda3/envs/ltx/lib/python3.10/site-packages/torch/nn/modules/module.py", line 1775, in _wrapped_call_impl
+[rank1]:     return self._call_impl(*args, **kwargs)
+[rank1]:   File "/root/miniconda3/envs/ltx/lib/python3.10/site-packages/torch/nn/modules/module.py", line 1786, in _call_impl
+[rank1]:     return forward_call(*args, **kwargs)
+[rank1]:   File "/data/vjuicefs_ai_camera_jgroup_acadmic/public_data/11194554/WorkSpace/LTX-2/packages/ltx-core/src/ltx_core/model/transformer/spatial_track_encoder.py", line 160, in forward
+[rank1]:     return self.proj(x)
+[rank1]:   File "/root/miniconda3/envs/ltx/lib/python3.10/site-packages/torch/nn/modules/module.py", line 1775, in _wrapped_call_impl
+[rank1]:     return self._call_impl(*args, **kwargs)
+[rank1]:   File "/root/miniconda3/envs/ltx/lib/python3.10/site-packages/torch/nn/modules/module.py", line 1786, in _call_impl
+[rank1]:     return forward_call(*args, **kwargs)
+[rank1]:   File "/root/miniconda3/envs/ltx/lib/python3.10/site-packages/torch/nn/modules/container.py", line 250, in forward
+[rank1]:     input = module(input)
+[rank1]:   File "/root/miniconda3/envs/ltx/lib/python3.10/site-packages/torch/nn/modules/module.py", line 1775, in _wrapped_call_impl
+[rank1]:     return self._call_impl(*args, **kwargs)
+[rank1]:   File "/root/miniconda3/envs/ltx/lib/python3.10/site-packages/torch/nn/modules/module.py", line 1786, in _call_impl
+[rank1]:     return forward_call(*args, **kwargs)
+[rank1]:   File "/root/miniconda3/envs/ltx/lib/python3.10/site-packages/torch/nn/modules/normalization.py", line 229, in forward
+[rank1]:     return F.layer_norm(
+[rank1]:   File "/root/miniconda3/envs/ltx/lib/python3.10/site-packages/torch/nn/functional.py", line 2901, in layer_norm
+[rank1]:     return torch.layer_norm(
+[rank1]: RuntimeError: expected scalar type BFloat16 but found Float
+  File "/root/miniconda3/envs/ltx/lib/python3.10/site-packages/click/core.py", line 1442, in __call__
+    return self.main(*args, **kwargs)
+  File "/root/miniconda3/envs/ltx/lib/python3.10/site-packages/typer/core.py", line 709, in main
+    return _main(
+  File "/root/miniconda3/envs/ltx/lib/python3.10/site-packages/typer/core.py", line 188, in _main
+    rv = self.invoke(ctx)
+  File "/root/miniconda3/envs/ltx/lib/python3.10/site-packages/click/core.py", line 1226, in invoke
+    return ctx.invoke(self.callback, **ctx.params)
+  File "/root/miniconda3/envs/ltx/lib/python3.10/site-packages/click/core.py", line 794, in invoke
+    return callback(*args, **kwargs)
+  File "/root/miniconda3/envs/ltx/lib/python3.10/site-packages/typer/main.py", line 1514, in wrapper
+    return callback(**use_params)
+  File "/data/vjuicefs_ai_camera_jgroup_acadmic/public_data/11194554/WorkSpace/LTX-2/packages/ltx-trainer/scripts/train.py", line 59, in main
+    trainer.train(disable_progress_bars=disable_progress_bars)
+  File "/data/vjuicefs_ai_camera_jgroup_acadmic/public_data/11194554/WorkSpace/LTX-2/packages/ltx-trainer/src/ltx_trainer/trainer.py", line 228, in train
+    sampled_videos_paths = self._run_validation(progress)
+  File "/data/vjuicefs_ai_camera_jgroup_acadmic/public_data/11194554/WorkSpace/LTX-2/packages/ltx-trainer/src/ltx_trainer/trainer.py", line 1406, in _run_validation
+    sampled = self._validation_runner.run(
+  File "/root/miniconda3/envs/ltx/lib/python3.10/site-packages/torch/utils/_contextlib.py", line 120, in decorate_context
+    return func(*args, **kwargs)
+  File "/data/vjuicefs_ai_camera_jgroup_acadmic/public_data/11194554/WorkSpace/LTX-2/packages/ltx-trainer/src/ltx_trainer/gpu_utils.py", line 62, in wrapper
+    return func(*args, **kwargs)
+  File "/data/vjuicefs_ai_camera_jgroup_acadmic/public_data/11194554/WorkSpace/LTX-2/packages/ltx-trainer/src/ltx_trainer/validation_runner_bakcup.py", line 201, in run
+    video, audio = self._generate_sample(
+  File "/data/vjuicefs_ai_camera_jgroup_acadmic/public_data/11194554/WorkSpace/LTX-2/packages/ltx-trainer/src/ltx_trainer/validation_runner.py", line 447, in _generate_sample
+    return super()._generate_sample(
+  File "/data/vjuicefs_ai_camera_jgroup_acadmic/public_data/11194554/WorkSpace/LTX-2/packages/ltx-trainer/src/ltx_trainer/validation_runner_bakcup.py", line 554, in _generate_sample
+    audio_state = self._apply_customize_audio_conditionings(audio_state, audio_tools, video_tools, sample, cached_media, device, transformer)
+  File "/data/vjuicefs_ai_camera_jgroup_acadmic/public_data/11194554/WorkSpace/LTX-2/packages/ltx-trainer/src/ltx_trainer/validation_runner_bakcup.py", line 729, in _apply_customize_audio_conditionings
+    latent = transformer.spatial_track_encoder(video_latent)
+  File "/root/miniconda3/envs/ltx/lib/python3.10/site-packages/torch/nn/modules/module.py", line 1775, in _wrapped_call_impl
+    return self._call_impl(*args, **kwargs)
+  File "/root/miniconda3/envs/ltx/lib/python3.10/site-packages/torch/nn/modules/module.py", line 1786, in _call_impl
+    return forward_call(*args, **kwargs)
+  File "/data/vjuicefs_ai_camera_jgroup_acadmic/public_data/11194554/WorkSpace/LTX-2/packages/ltx-core/src/ltx_core/model/transformer/spatial_track_encoder.py", line 160, in forward
+    return self.proj(x)
+  File "/root/miniconda3/envs/ltx/lib/python3.10/site-packages/torch/nn/modules/module.py", line 1775, in _wrapped_call_impl
+    return self._call_impl(*args, **kwargs)
+  File "/root/miniconda3/envs/ltx/lib/python3.10/site-packages/torch/nn/modules/module.py", line 1786, in _call_impl
+    return forward_call(*args, **kwargs)
+  File "/root/miniconda3/envs/ltx/lib/python3.10/site-packages/torch/nn/modules/container.py", line 250, in forward
+    input = module(input)
+  File "/root/miniconda3/envs/ltx/lib/python3.10/site-packages/torch/nn/modules/module.py", line 1775, in _wrapped_call_impl
+    return self._call_impl(*args, **kwargs)
+  File "/root/miniconda3/envs/ltx/lib/python3.10/site-packages/torch/nn/modules/module.py", line 1786, in _call_impl
+    return forward_call(*args, **kwargs)
+  File "/root/miniconda3/envs/ltx/lib/python3.10/site-packages/torch/nn/modules/normalization.py", line 229, in forward
+    return F.layer_norm(
+  File "/root/miniconda3/envs/ltx/lib/python3.10/site-packages/torch/nn/functional.py", line 2901, in layer_norm
+    return torch.layer_norm(
+RuntimeError: Expected weight to be of same shape as normalized_shape, but got weight of shape [0] and normalized_shape = [128]
+[rank0]: Traceback (most recent call last):
+[rank0]:   File "/data/vjuicefs_ai_camera_jgroup_acadmic/public_data/11194554/WorkSpace/LTX-2/packages/ltx-trainer/scripts/train.py", line 63, in <module>
+[rank0]:     app()
+[rank0]:   File "/root/miniconda3/envs/ltx/lib/python3.10/site-packages/typer/main.py", line 1152, in __call__
+[rank0]:     raise e
+[rank0]:   File "/root/miniconda3/envs/ltx/lib/python3.10/site-packages/typer/main.py", line 1135, in __call__
+[rank0]:     return get_command(self)(*args, **kwargs)
+[rank0]:   File "/root/miniconda3/envs/ltx/lib/python3.10/site-packages/click/core.py", line 1442, in __call__
+[rank0]:     return self.main(*args, **kwargs)
+[rank0]:   File "/root/miniconda3/envs/ltx/lib/python3.10/site-packages/typer/core.py", line 709, in main
+[rank0]:     return _main(
+[rank0]:   File "/root/miniconda3/envs/ltx/lib/python3.10/site-packages/typer/core.py", line 188, in _main
+[rank0]:     rv = self.invoke(ctx)
+[rank0]:   File "/root/miniconda3/envs/ltx/lib/python3.10/site-packages/click/core.py", line 1226, in invoke
+[rank0]:     return ctx.invoke(self.callback, **ctx.params)
+[rank0]:   File "/root/miniconda3/envs/ltx/lib/python3.10/site-packages/click/core.py", line 794, in invoke
+[rank0]:     return callback(*args, **kwargs)
+[rank0]:   File "/root/miniconda3/envs/ltx/lib/python3.10/site-packages/typer/main.py", line 1514, in wrapper
+[rank0]:     return callback(**use_params)
+[rank0]:   File "/data/vjuicefs_ai_camera_jgroup_acadmic/public_data/11194554/WorkSpace/LTX-2/packages/ltx-trainer/scripts/train.py", line 59, in main
+[rank0]:     trainer.train(disable_progress_bars=disable_progress_bars)
+[rank0]:   File "/data/vjuicefs_ai_camera_jgroup_acadmic/public_data/11194554/WorkSpace/LTX-2/packages/ltx-trainer/src/ltx_trainer/trainer.py", line 228, in train
+[rank0]:     sampled_videos_paths = self._run_validation(progress)
+[rank0]:   File "/data/vjuicefs_ai_camera_jgroup_acadmic/public_data/11194554/WorkSpace/LTX-2/packages/ltx-trainer/src/ltx_trainer/trainer.py", line 1406, in _run_validation
+[rank0]:     sampled = self._validation_runner.run(
+[rank0]:   File "/root/miniconda3/envs/ltx/lib/python3.10/site-packages/torch/utils/_contextlib.py", line 120, in decorate_context
+[rank0]:     return func(*args, **kwargs)
+[rank0]:   File "/data/vjuicefs_ai_camera_jgroup_acadmic/public_data/11194554/WorkSpace/LTX-2/packages/ltx-trainer/src/ltx_trainer/gpu_utils.py", line 62, in wrapper
+[rank0]:     return func(*args, **kwargs)
+[rank0]:   File "/data/vjuicefs_ai_camera_jgroup_acadmic/public_data/11194554/WorkSpace/LTX-2/packages/ltx-trainer/src/ltx_trainer/validation_runner_bakcup.py", line 201, in run
+[rank0]:     video, audio = self._generate_sample(
+[rank0]:   File "/data/vjuicefs_ai_camera_jgroup_acadmic/public_data/11194554/WorkSpace/LTX-2/packages/ltx-trainer/src/ltx_trainer/validation_runner.py", line 447, in _generate_sample
+[rank0]:     return super()._generate_sample(
+[rank0]:   File "/data/vjuicefs_ai_camera_jgroup_acadmic/public_data/11194554/WorkSpace/LTX-2/packages/ltx-trainer/src/ltx_trainer/validation_runner_bakcup.py", line 554, in _generate_sample
+[rank0]:     audio_state = self._apply_customize_audio_conditionings(audio_state, audio_tools, video_tools, sample, cached_media, device, transformer)
+[rank0]:   File "/data/vjuicefs_ai_camera_jgroup_acadmic/public_data/11194554/WorkSpace/LTX-2/packages/ltx-trainer/src/ltx_trainer/validation_runner_bakcup.py", line 729, in _apply_customize_audio_conditionings
+[rank0]:     latent = transformer.spatial_track_encoder(video_latent)
+[rank0]:   File "/root/miniconda3/envs/ltx/lib/python3.10/site-packages/torch/nn/modules/module.py", line 1775, in _wrapped_call_impl
+[rank0]:     return self._call_impl(*args, **kwargs)
+[rank0]:   File "/root/miniconda3/envs/ltx/lib/python3.10/site-packages/torch/nn/modules/module.py", line 1786, in _call_impl
+[rank0]:     return forward_call(*args, **kwargs)
+[rank0]:   File "/data/vjuicefs_ai_camera_jgroup_acadmic/public_data/11194554/WorkSpace/LTX-2/packages/ltx-core/src/ltx_core/model/transformer/spatial_track_encoder.py", line 160, in forward
+[rank0]:     return self.proj(x)
+[rank0]:   File "/root/miniconda3/envs/ltx/lib/python3.10/site-packages/torch/nn/modules/module.py", line 1775, in _wrapped_call_impl
+[rank0]:     return self._call_impl(*args, **kwargs)
+[rank0]:   File "/root/miniconda3/envs/ltx/lib/python3.10/site-packages/torch/nn/modules/module.py", line 1786, in _call_impl
+[rank0]:     return forward_call(*args, **kwargs)
+[rank0]:   File "/root/miniconda3/envs/ltx/lib/python3.10/site-packages/torch/nn/modules/container.py", line 250, in forward
+[rank0]:     input = module(input)
+[rank0]:   File "/root/miniconda3/envs/ltx/lib/python3.10/site-packages/torch/nn/modules/module.py", line 1775, in _wrapped_call_impl
+[rank0]:     return self._call_impl(*args, **kwargs)
+[rank0]:   File "/root/miniconda3/envs/ltx/lib/python3.10/site-packages/torch/nn/modules/module.py", line 1786, in _call_impl
+[rank0]:     return forward_call(*args, **kwargs)
+[rank0]:   File "/root/miniconda3/envs/ltx/lib/python3.10/site-packages/torch/nn/modules/normalization.py", line 229, in forward
+[rank0]:     return F.layer_norm(
+[rank0]:   File "/root/miniconda3/envs/ltx/lib/python3.10/site-packages/torch/nn/functional.py", line 2901, in layer_norm
+[rank0]:     return torch.layer_norm(
+[rank0]: RuntimeError: Expected weight to be of same shape as normalized_shape, but got weight of shape [0] and normalized_shape = [128]
