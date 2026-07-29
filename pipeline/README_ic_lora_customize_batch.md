@@ -145,11 +145,35 @@ singleton batch 维度 `[1, T, 2]`。
 | `height` / `width` | 否 | 覆盖命令行输出分辨率；必须满足 LTX 两阶段分辨率约束。 |
 | `num_frames` | 否 | 覆盖命令行帧数。 |
 | `frame_rate` | 否 | 覆盖命令行帧率。 |
-| `output_path` | 否 | 当前样例输出路径。 |
+| `output_path` | 否 | 当前样例的输出文件名；其中的目录部分会被忽略。 |
 
-`reference_video`、`track` 和 `output_path` 的相对路径均相对于 JSON 文件所在
-目录，而不是当前 shell 的工作目录。如果未提供 `output_path`，脚本会在命令行
-`--output-path` 的文件名后添加 `_0000`、`_0001` 等编号。
+`reference_video` 和 `track` 的相对路径均相对于 JSON 文件所在目录，而不是
+当前 shell 的工作目录。`output_path` 只用于指定输出文件名；所有结果都会写入
+命令行 `--output-path` 指定的父目录之下。如果未提供该字段，文件名依次为
+`sample_0000.mp4`、`sample_0001.mp4`。
+
+### 4.1 输出子目录命名规则
+
+命令行 `--output-path` **必须是父文件夹地址**。脚本根据所加载的额外模块，在
+该父文件夹下自动创建一层结果目录：
+
+| 模块权重参数 | 自动创建的子目录 |
+| --- | --- |
+| 两个权重都不传 | `vanilla_results/` |
+| 只传 `--track-prope-weights /path/track_prope_step_01000.safetensors` | `track_prope_step_01000.safetensors/` |
+| 只传 `--spatial-track-encoder-weights /path/spatial_step_01000.safetensors` | `spatial_step_01000.safetensors/` |
+| 两个都传 | `track_prope_step_01000.safetensors__spatial_step_01000.safetensors/` |
+
+目录名使用权重文件的完整 filename，包含 `.safetensors`、`.pt` 等扩展名。
+两个权重都存在时，顺序固定为 Track-PRoPE、Spatial Track Encoder，并使用
+`__` 连接。例如 `--output-path test_data/outputs` 最终可能产生：
+
+```text
+test_data/outputs/
+└── track_prope_step_01000.safetensors__spatial_step_01000.safetensors/
+    ├── sample_0000.mp4
+    └── sample_0001.mp4
+```
 
 ## 5. 批量推理
 
@@ -170,7 +194,7 @@ python pipeline/ic_lora_customize_batch.py \
   --num-frames 121 \
   --frame-rate 24 \
   --seed 42 \
-  --output-path test_data/outputs/result.mp4
+  --output-path test_data/outputs
 ```
 
 命令行中的尺寸、帧数、帧率和 seed 是默认值；JSON 中的同名字段优先。
@@ -187,7 +211,7 @@ python pipeline/ic_lora_customize_batch.py \
   --lora models/ic_lora.safetensors 1.0 \
   --track-prope-weights models/track_prope_step_01000.safetensors \
   --batch-json test_data/batch.json \
-  --output-path test_data/outputs/result.mp4
+  --output-path test_data/outputs
 ```
 
 启用 Track-PRoPE 后，每个样例都必须提供有效的 `track`。
@@ -205,7 +229,7 @@ python pipeline/ic_lora_customize_batch.py \
   --spatial-track-encoder-weights \
     models/spatial_track_encoder_step_01000.safetensors \
   --batch-json test_data/batch.json \
-  --output-path test_data/outputs/result.mp4
+  --output-path test_data/outputs
 ```
 
 ### 5.4 显存不足时跳过第二阶段
@@ -236,7 +260,7 @@ python pipeline/ic_lora_customize_batch.py \
   --num-frames 121 \
   --frame-rate 24 \
   --seed 42 \
-  --output-path test_data/outputs/single.mp4
+  --output-path test_data/outputs
 ```
 
 ## 7. 可选 conditioning attention mask
@@ -273,8 +297,8 @@ IC-LoRA reference conditioning，`1.0` 表示完整强度。
 启用了 Track-PRoPE，但某个 JSON 样例没有有效的 `track`。请为每条样例填写
 轨迹路径并检查文件是否存在。
 
-### 输出路径被自动改名
+### 输出路径与预期不同
 
-当 JSON 样例没有 `output_path` 时，这是预期行为。脚本会依据
-`--output-path` 生成带四位样例编号的文件名，防止批处理结果互相覆盖。
-
+请确认 `--output-path` 传入的是父文件夹而不是 `.mp4` 文件。脚本一定会先根据
+模块权重创建 `vanilla_results` 或权重名称子目录，再把 JSON 中 `output_path`
+的文件名（或自动生成的 `sample_XXXX.mp4`）写入该目录。

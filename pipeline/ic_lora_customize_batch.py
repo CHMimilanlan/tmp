@@ -573,12 +573,19 @@ def main() -> None:
         track_prope_path=args.track_prope_weights,
     )
     tiling_config = TilingConfig.default()
+    result_directory = _result_directory(
+        output_root=args.output_path,
+        track_prope_weights=args.track_prope_weights,
+        spatial_track_encoder_weights=args.spatial_track_encoder_weights,
+    )
+    result_directory.mkdir(parents=True, exist_ok=True)
+    logging.info("Writing results to %s", result_directory)
     samples = _read_batch_samples(args.batch_json) if args.batch_json else [{
         "prompt": args.prompt,
         "reference_video": args.video_conditioning[0][0],
         "reference_strength": args.video_conditioning[0][1],
         "track": None,
-        "output_path": args.output_path,
+        "output_path": None,
     }]
     if args.track_prope_weights and not args.batch_json:
         parser.error("Track-PRoPE needs per-sample tracks; use --batch-json")
@@ -586,7 +593,7 @@ def main() -> None:
     for index, sample in enumerate(samples):
         sample_frames = int(sample.get("num_frames", args.num_frames))
         sample_fps = float(sample.get("frame_rate", args.frame_rate))
-        output_path = sample.get("output_path") or _indexed_output_path(args.output_path, index)
+        output_path = _sample_output_path(result_directory, sample.get("output_path"), index)
         logging.info("Generating batch sample %d/%d -> %s", index + 1, len(samples), output_path)
         video, audio = pipeline(
             prompt=sample["prompt"], seed=int(sample.get("seed", args.seed)),
@@ -598,7 +605,6 @@ def main() -> None:
             skip_stage_2=args.skip_stage_2,
             conditioning_attention_mask=conditioning_attention_mask,
         )
-        Path(output_path).expanduser().parent.mkdir(parents=True, exist_ok=True)
         encode_video(video=video, fps=sample_fps, audio=audio, output_path=output_path,
                      video_chunks_number=get_video_chunks_number(sample_frames, tiling_config))
 
@@ -619,16 +625,41 @@ def _read_batch_samples(path: Path) -> list[dict[str, Any]]:
         if missing:
             raise ValueError(f"Sample {index} in {path} is missing: {', '.join(sorted(missing))}")
         sample = dict(value)
-        for key in ("reference_video", "track", "output_path"):
+        for key in ("reference_video", "track"):
             if sample.get(key) and not Path(sample[key]).expanduser().is_absolute():
                 sample[key] = str(base / sample[key])
         result.append(sample)
     return result
 
 
-def _indexed_output_path(output_path: str | Path, index: int) -> str:
-    path = Path(output_path).expanduser()
-    return str(path.with_name(f"{path.stem}_{index:04d}{path.suffix}"))
+def _result_directory(
+    *,
+    output_root: str | Path,
+    track_prope_weights: str | Path | None,
+    spatial_track_encoder_weights: str | Path | None,
+) -> Path:
+    """Build the module-specific result directory below ``output_root``.
+
+    Checkpoint filenames are used verbatim, including their extension.
+    """
+    names = []
+    if track_prope_weights is not None:
+        names.append(Path(track_prope_weights).expanduser().name)
+    if spatial_track_encoder_weights is not None:
+        names.append(Path(spatial_track_encoder_weights).expanduser().name)
+    child_name = "__".join(names) if names else "vanilla_results"
+    return Path(output_root).expanduser() / child_name
+
+
+def _sample_output_path(result_directory: Path, requested_path: str | Path | None, index: int) -> str:
+    """Return a unique output file inside the selected result directory."""
+    if requested_path:
+        filename = Path(requested_path).name
+        if not filename:
+            raise ValueError(f"Sample {index} output_path must include a file name")
+    else:
+        filename = f"sample_{index:04d}.mp4"
+    return str(result_directory / filename)
 
 
 def _load_mask_video(
