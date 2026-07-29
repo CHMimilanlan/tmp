@@ -17,6 +17,11 @@ IC-LoRA 推理流程。
 `ltx_core` 也必须包含相同修改。此外，`ModalitySpec` 必须定义 `track_xy` 和
 `track_valid` 字段，否则脚本会主动报错，而不是静默忽略轨迹。
 
+LTX-2.3 的 `DiffusionStage` 会延迟创建 Transformer：模型只在阶段执行期间的
+`with self._transformer_ctx(...) as transformer` 内存在。本脚本会包装该 context，
+在 Transformer 创建完成后、开始 denoising 前初始化并加载轨迹模块，因此兼容
+模型 offload，也不会在 Pipeline 构造阶段尝试查找尚不存在的 Transformer。
+
 首先查看当前 LTX-2.3 版本提供的完整基础参数：
 
 ```bash

@@ -1,6 +1,7 @@
 import json
 import logging
 from collections.abc import Iterator
+from contextlib import contextmanager
 from dataclasses import fields
 from pathlib import Path
 from typing import Any
@@ -310,29 +311,84 @@ class ICLoraPipeline:
         spatial_track_encoder_path: str | Path | None,
         track_prope_path: str | Path | None,
     ) -> None:
-        """Initialize optional modules and load their separately saved weights."""
+        """Install hooks that configure transformers when a stage creates them.
+
+        ``DiffusionStage`` owns a lazy transformer context.  There is no model
+        instance during pipeline construction; it only exists inside
+        ``with stage._transformer_ctx(...)``.  Wrapping that context therefore
+        avoids trying to discover a transformer before it has been created and
+        also works with offloading modes that create a new instance later.
+        """
         if not (spatial_track_encoder_path or track_prope_path):
             return
 
-        transformer = self._find_transformer(self.stage_1)
-        if transformer is None:
-            raise RuntimeError("Could not locate the LTX transformer inside DiffusionStage")
+        spatial_path = self._validate_weights_path(spatial_track_encoder_path)
+        prope_path = self._validate_weights_path(track_prope_path)
+        self._wrap_transformer_context(
+            self.stage_1,
+            spatial_track_encoder_path=spatial_path,
+            track_prope_path=prope_path,
+        )
+        # Stage 2 has no reference-video Spatial Track Encoder conditioning,
+        # but Track-PRoPE must be present for its audio denoising blocks.
+        if prope_path is not None:
+            self._wrap_transformer_context(
+                self.stage_2,
+                spatial_track_encoder_path=None,
+                track_prope_path=prope_path,
+            )
 
-        if track_prope_path:
-            # Both denoising stages have independent model instances.
-            for stage in (self.stage_1, self.stage_2):
-                stage_transformer = self._find_transformer(stage)
-                if stage_transformer is None:
-                    raise RuntimeError("The loaded stage has no LTX transformer")
-                blocks = getattr(stage_transformer, "transformer_blocks", None)
-                if blocks is None:
-                    raise RuntimeError("The loaded transformer has no transformer_blocks")
-                for block in blocks:
-                    block.use_track_prope = True
-                    block.initialize_track_prope(device=self.device, dtype=self.dtype)
-                self._load_module_weights(stage_transformer, track_prope_path, "track_prope")
+    @staticmethod
+    def _validate_weights_path(path: str | Path | None) -> Path | None:
+        if path is None:
+            return None
+        resolved = Path(path).expanduser()
+        if not resolved.is_file():
+            raise FileNotFoundError(f"Track module weights do not exist: {resolved}")
+        return resolved
 
-        if spatial_track_encoder_path:
+    def _wrap_transformer_context(
+        self,
+        stage: DiffusionStage,
+        *,
+        spatial_track_encoder_path: Path | None,
+        track_prope_path: Path | None,
+    ) -> None:
+        original_transformer_ctx = stage._transformer_ctx
+
+        @contextmanager
+        def track_aware_transformer_ctx(*args: Any, **kwargs: Any):
+            with original_transformer_ctx(*args, **kwargs) as transformer:
+                self._configure_transformer_instance(
+                    transformer,
+                    spatial_track_encoder_path=spatial_track_encoder_path,
+                    track_prope_path=track_prope_path,
+                )
+                yield transformer
+
+        stage._transformer_ctx = track_aware_transformer_ctx
+
+    def _configure_transformer_instance(
+        self,
+        transformer: torch.nn.Module,
+        *,
+        spatial_track_encoder_path: Path | None,
+        track_prope_path: Path | None,
+    ) -> None:
+        signature = (spatial_track_encoder_path, track_prope_path)
+        if getattr(transformer, "_ic_track_modules_signature", None) == signature:
+            return
+
+        if track_prope_path is not None:
+            blocks = getattr(transformer, "transformer_blocks", None)
+            if blocks is None:
+                raise RuntimeError("The lazily loaded transformer has no transformer_blocks")
+            for block in blocks:
+                block.use_track_prope = True
+                block.initialize_track_prope(device=self.device, dtype=self.dtype)
+            self._load_module_weights(transformer, track_prope_path, "track_prope")
+
+        if spatial_track_encoder_path is not None:
             from ltx_core.model.transformer.spatial_track_encoder import SpatialTrackEncoderConfig
 
             transformer.initialize_spatial_track_modules(
@@ -345,26 +401,7 @@ class ICLoraPipeline:
                 dtype=self.dtype,
             )
             self._load_module_weights(transformer, spatial_track_encoder_path, "spatial_track_encoder")
-
-    @staticmethod
-    def _find_transformer(root: Any) -> torch.nn.Module | None:
-        """Find the model without depending on private DiffusionStage attribute names."""
-        candidates = [root]
-        seen: set[int] = set()
-        while candidates:
-            value = candidates.pop()
-            if id(value) in seen:
-                continue
-            seen.add(id(value))
-            if isinstance(value, torch.nn.Module):
-                if hasattr(value, "transformer_blocks"):
-                    return value
-                candidates.extend(value.children())
-            for name in ("transformer", "model", "module", "_transformer", "_model"):
-                child = getattr(value, name, None)
-                if child is not None:
-                    candidates.append(child)
-        return None
+        transformer._ic_track_modules_signature = signature
 
     @staticmethod
     def _load_module_weights(model: torch.nn.Module, path: str | Path, marker: str) -> None:
