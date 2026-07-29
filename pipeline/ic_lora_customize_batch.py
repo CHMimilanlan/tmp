@@ -1,5 +1,10 @@
+import json
 import logging
 from collections.abc import Iterator
+from contextlib import contextmanager
+from dataclasses import fields
+from pathlib import Path
+from typing import Any
 
 import torch
 
@@ -10,7 +15,7 @@ from ltx_core.loader.registry import Registry
 from ltx_core.model.transformer.compiling import CompilationConfig
 from ltx_core.model.video_vae import TilingConfig, VideoEncoder, get_video_chunks_number
 from ltx_core.quantization import QuantizationPolicy
-from ltx_core.types import Audio, VideoPixelShape
+from ltx_core.types import Audio, AudioLatentShape, VideoPixelShape
 from ltx_pipelines.iclora_utils import (
     append_ic_lora_reference_video_conditionings,
     read_lora_reference_downscale_factor,
@@ -64,6 +69,8 @@ class ICLoraPipeline:
         registry: Registry | None = None,
         compilation_config: CompilationConfig | None = None,
         offload_mode: OffloadMode = OffloadMode.NONE,
+        spatial_track_encoder_path: str | Path | None = None,
+        track_prope_path: str | Path | None = None,
     ):
         self.device = device or get_device()
         self.dtype = torch.bfloat16
@@ -103,6 +110,13 @@ class ICLoraPipeline:
         )
         self.video_decoder = VideoDecoder(distilled_checkpoint_path, self.dtype, self.device, registry=registry)
         self.audio_decoder = AudioDecoder(distilled_checkpoint_path, self.dtype, self.device, registry=registry)
+
+        self.use_spatial_track_encoder = spatial_track_encoder_path is not None
+        self.use_track_prope = track_prope_path is not None
+        self._configure_track_modules(
+            spatial_track_encoder_path=spatial_track_encoder_path,
+            track_prope_path=track_prope_path,
+        )
 
         # Read reference scale factors from LoRA metadata.
         # IC-LoRAs trained with scaled reference videos store these factors
@@ -146,6 +160,7 @@ class ICLoraPipeline:
         conditioning_attention_mask: torch.Tensor | None = None,
         stage_1_sigmas: torch.Tensor = DISTILLED_SIGMAS,
         stage_2_sigmas: torch.Tensor = STAGE_2_DISTILLED_SIGMAS,
+        track: str | Path | None = None,
     ) -> tuple[Iterator[torch.Tensor], Audio]:
         """
         Generate video with IC-LoRA conditioning.
@@ -184,6 +199,10 @@ class ICLoraPipeline:
             raise ValueError(
                 f"conditioning_attention_strength must be in [0.0, 1.0], got {conditioning_attention_strength}"
             )
+
+        if self.use_track_prope and track is None:
+            raise ValueError("--track-prope-weights requires a track for every sample")
+        track_xy, track_valid = self._prepare_track(track, num_frames, frame_rate)
 
         generator = torch.Generator(device=self.device).manual_seed(seed)
         noiser = GaussianNoiser(generator=generator)
@@ -233,9 +252,7 @@ class ICLoraPipeline:
                 context=video_context,
                 conditionings=stage_1_conditionings,
             ),
-            audio=ModalitySpec(
-                context=audio_context,
-            ),
+            audio=self._audio_spec(audio_context, track_xy, track_valid),
         )
 
         if skip_stage_2:
@@ -275,16 +292,192 @@ class ICLoraPipeline:
                 noise_scale=stage_2_sigmas[0].item(),
                 initial_latent=upscaled_video_latent,
             ),
-            audio=ModalitySpec(
+            audio=self._audio_spec(
                 context=audio_context,
                 noise_scale=stage_2_sigmas[0].item(),
                 initial_latent=audio_state.latent,
+                track_xy=track_xy,
+                track_valid=track_valid,
             ),
         )
 
         decoded_video = self.video_decoder(video_state.latent, tiling_config, generator)
         decoded_audio = self.audio_decoder(audio_state.latent)
         return decoded_video, decoded_audio
+
+    def _configure_track_modules(
+        self,
+        *,
+        spatial_track_encoder_path: str | Path | None,
+        track_prope_path: str | Path | None,
+    ) -> None:
+        """Install hooks that configure transformers when a stage creates them.
+
+        ``DiffusionStage`` owns a lazy transformer context.  There is no model
+        instance during pipeline construction; it only exists inside
+        ``with stage._transformer_ctx(...)``.  Wrapping that context therefore
+        avoids trying to discover a transformer before it has been created and
+        also works with offloading modes that create a new instance later.
+        """
+        if not (spatial_track_encoder_path or track_prope_path):
+            return
+
+        spatial_path = self._validate_weights_path(spatial_track_encoder_path)
+        prope_path = self._validate_weights_path(track_prope_path)
+        self._wrap_transformer_context(
+            self.stage_1,
+            spatial_track_encoder_path=spatial_path,
+            track_prope_path=prope_path,
+        )
+        # Stage 2 has no reference-video Spatial Track Encoder conditioning,
+        # but Track-PRoPE must be present for its audio denoising blocks.
+        if prope_path is not None:
+            self._wrap_transformer_context(
+                self.stage_2,
+                spatial_track_encoder_path=None,
+                track_prope_path=prope_path,
+            )
+
+    @staticmethod
+    def _validate_weights_path(path: str | Path | None) -> Path | None:
+        if path is None:
+            return None
+        resolved = Path(path).expanduser()
+        if not resolved.is_file():
+            raise FileNotFoundError(f"Track module weights do not exist: {resolved}")
+        return resolved
+
+    def _wrap_transformer_context(
+        self,
+        stage: DiffusionStage,
+        *,
+        spatial_track_encoder_path: Path | None,
+        track_prope_path: Path | None,
+    ) -> None:
+        original_transformer_ctx = stage._transformer_ctx
+
+        @contextmanager
+        def track_aware_transformer_ctx(*args: Any, **kwargs: Any):
+            with original_transformer_ctx(*args, **kwargs) as transformer:
+                self._configure_transformer_instance(
+                    transformer,
+                    spatial_track_encoder_path=spatial_track_encoder_path,
+                    track_prope_path=track_prope_path,
+                )
+                yield transformer
+
+        stage._transformer_ctx = track_aware_transformer_ctx
+
+    def _configure_transformer_instance(
+        self,
+        transformer: torch.nn.Module,
+        *,
+        spatial_track_encoder_path: Path | None,
+        track_prope_path: Path | None,
+    ) -> None:
+        signature = (spatial_track_encoder_path, track_prope_path)
+        if getattr(transformer, "_ic_track_modules_signature", None) == signature:
+            return
+
+        if track_prope_path is not None:
+            blocks = getattr(transformer, "transformer_blocks", None)
+            if blocks is None:
+                raise RuntimeError("The lazily loaded transformer has no transformer_blocks")
+            for block in blocks:
+                block.use_track_prope = True
+                block.initialize_track_prope(device=self.device, dtype=self.dtype)
+            self._load_module_weights(transformer, track_prope_path, "track_prope")
+
+        if spatial_track_encoder_path is not None:
+            from ltx_core.model.transformer.spatial_track_encoder import SpatialTrackEncoderConfig
+
+            transformer.initialize_spatial_track_modules(
+                encoder_type="simple",
+                cfg=SpatialTrackEncoderConfig(
+                    dim=128, video_t=16, video_h=8, video_w=12, audio_t=122,
+                    num_heads=8, dropout=0.0, encoder_depth=4, decoder_depth=2,
+                ),
+                device=self.device,
+                dtype=self.dtype,
+            )
+            self._load_module_weights(transformer, spatial_track_encoder_path, "spatial_track_encoder")
+        transformer._ic_track_modules_signature = signature
+
+    @staticmethod
+    def _load_module_weights(model: torch.nn.Module, path: str | Path, marker: str) -> None:
+        path = Path(path).expanduser()
+        if not path.is_file():
+            raise FileNotFoundError(f"{marker} weights do not exist: {path}")
+        if path.suffix == ".safetensors":
+            from safetensors.torch import load_file
+
+            state = load_file(str(path), device="cpu")
+        else:
+            state = torch.load(path, map_location="cpu", weights_only=True)
+        if isinstance(state, dict) and "state_dict" in state:
+            state = state["state_dict"]
+        if not isinstance(state, dict):
+            raise TypeError(f"Expected a state dict in {path}")
+
+        # Trainer checkpoints may contain PEFT/FSDP prefixes. Match by the
+        # stable module marker instead of assuming one particular wrapper.
+        selected: dict[str, torch.Tensor] = {}
+        model_keys = set(model.state_dict())
+        for key, value in state.items():
+            if marker not in key:
+                continue
+            suffix = key[key.index(marker):]
+            matches = [candidate for candidate in model_keys if candidate.endswith(suffix)]
+            if len(matches) == 1:
+                selected[matches[0]] = value
+        if not selected:
+            raise ValueError(f"No {marker} parameters from {path} match the loaded transformer")
+        incompatible = model.load_state_dict(selected, strict=False)
+        logging.info("Loaded %d %s tensors from %s", len(selected), marker, path)
+        if any(marker in key for key in incompatible.missing_keys):
+            logging.warning("Some %s parameters were not present in %s", marker, path)
+
+    def _prepare_track(
+        self, path: str | Path | None, num_frames: int, frame_rate: float
+    ) -> tuple[torch.Tensor | None, torch.Tensor | None]:
+        if path is None:
+            return None, None
+        raw = torch.load(Path(path).expanduser(), map_location="cpu", weights_only=True)
+        xy = raw if isinstance(raw, torch.Tensor) else raw.get("track_xy")
+        valid = None if isinstance(raw, torch.Tensor) else raw.get("track_valid")
+        if not isinstance(xy, torch.Tensor):
+            raise ValueError(f"Track {path} must be a tensor or contain track_xy")
+        if xy.ndim == 3 and xy.shape[0] == 1:
+            xy = xy[0]
+        if xy.ndim != 2 or xy.shape[1] != 2:
+            raise ValueError(f"Track {path} must have shape [T, 2], got {tuple(xy.shape)}")
+        valid = torch.ones(xy.shape[0], dtype=torch.bool) if valid is None else valid.squeeze().bool()
+        if valid.shape != (xy.shape[0],):
+            raise ValueError(
+                f"Track {path} track_valid must have shape {(xy.shape[0],)}, got {tuple(valid.shape)}"
+            )
+        valid = valid & torch.isfinite(xy).all(-1)
+        token_count = AudioLatentShape.from_duration(num_frames / frame_rate).token_count()
+        xy = torch.nn.functional.interpolate(
+            torch.nan_to_num(xy.float()).T[None], size=token_count, mode="linear", align_corners=True
+        ).transpose(1, 2)
+        valid = torch.nn.functional.interpolate(
+            valid.float()[None, None], size=token_count, mode="nearest"
+        ).squeeze(1).bool()
+        return xy.to(self.device, self.dtype), valid.to(self.device)
+
+    @staticmethod
+    def _audio_spec(context: torch.Tensor, track_xy=None, track_valid=None, **kwargs: Any) -> ModalitySpec:
+        values = {"context": context, **kwargs}
+        supported = {field.name for field in fields(ModalitySpec)}
+        if track_xy is not None:
+            if not {"track_xy", "track_valid"}.issubset(supported):
+                raise RuntimeError(
+                    "This LTX installation's ModalitySpec does not expose track_xy/track_valid; "
+                    "install the Track-PRoPE-enabled LTX core used by pipeline/transformer.py"
+                )
+            values.update(track_xy=track_xy, track_valid=track_valid)
+        return ModalitySpec(**values)
 
     def _create_conditionings(
         self,
@@ -348,12 +541,23 @@ def main() -> None:
     checkpoint_path = detect_checkpoint_path(distilled=True)
     params = detect_params(checkpoint_path)
     parser = default_2_stage_distilled_arg_parser(params=params)
+    # The upstream single-sample parser marks --prompt as required. Batch
+    # manifests provide a prompt per sample, so argparse must not reject the
+    # command before we have a chance to inspect --batch-json. Single-sample
+    # mode is validated explicitly after parsing below.
+    prompt_action = next(
+        (action for action in parser._actions if action.dest == "prompt"),
+        None,
+    )
+    if prompt_action is None:
+        raise RuntimeError("The LTX argument parser does not define --prompt")
+    prompt_action.required = False
     parser.add_argument(
         "--video-conditioning",
         action=VideoConditioningAction,
         nargs=2,
         metavar=("PATH", "STRENGTH"),
-        required=True,
+        required=False,
     )
     parser.add_argument(
         "--conditioning-attention-mask",
@@ -372,6 +576,14 @@ def main() -> None:
         ),
     )
     parser.add_argument(
+        "--batch-json",
+        type=Path,
+        help=("JSON array (or an object with a 'samples' array). Each sample must contain "
+              "prompt, reference_video and track; output_path and per-sample overrides are optional."),
+    )
+    parser.add_argument("--spatial-track-encoder-weights", type=Path)
+    parser.add_argument("--track-prope-weights", type=Path)
+    parser.add_argument(
         "--skip-stage-2",
         action="store_true",
         help=(
@@ -380,6 +592,12 @@ def main() -> None:
         ),
     )
     args = parser.parse_args()
+
+    if args.batch_json is None:
+        if not args.prompt:
+            parser.error("--prompt is required when --batch-json is not used")
+        if not args.video_conditioning:
+            parser.error("--video-conditioning is required when --batch-json is not used")
 
     # Load mask video if provided via --conditioning-attention-mask
     conditioning_attention_mask = None
@@ -402,32 +620,97 @@ def main() -> None:
         quantization=args.quantization,
         compilation_config=args.compile,
         offload_mode=args.offload_mode,
+        spatial_track_encoder_path=args.spatial_track_encoder_weights,
+        track_prope_path=args.track_prope_weights,
     )
     tiling_config = TilingConfig.default()
-    video_chunks_number = get_video_chunks_number(args.num_frames, tiling_config)
-
-    video, audio = pipeline(
-        prompt=args.prompt,
-        seed=args.seed,
-        height=args.height,
-        width=args.width,
-        num_frames=args.num_frames,
-        frame_rate=args.frame_rate,
-        images=args.images,
-        video_conditioning=args.video_conditioning,
-        tiling_config=tiling_config,
-        conditioning_attention_strength=conditioning_attention_strength,
-        skip_stage_2=args.skip_stage_2,
-        conditioning_attention_mask=conditioning_attention_mask,
+    result_directory = _result_directory(
+        output_root=args.output_path,
+        track_prope_weights=args.track_prope_weights,
+        spatial_track_encoder_weights=args.spatial_track_encoder_weights,
     )
+    result_directory.mkdir(parents=True, exist_ok=True)
+    logging.info("Writing results to %s", result_directory)
+    samples = _read_batch_samples(args.batch_json) if args.batch_json else [{
+        "prompt": args.prompt,
+        "reference_video": args.video_conditioning[0][0],
+        "reference_strength": args.video_conditioning[0][1],
+        "track": None,
+        "output_path": None,
+    }]
+    if args.track_prope_weights and not args.batch_json:
+        parser.error("Track-PRoPE needs per-sample tracks; use --batch-json")
 
-    encode_video(
-        video=video,
-        fps=args.frame_rate,
-        audio=audio,
-        output_path=args.output_path,
-        video_chunks_number=video_chunks_number,
-    )
+    for index, sample in enumerate(samples):
+        sample_frames = int(sample.get("num_frames", args.num_frames))
+        sample_fps = float(sample.get("frame_rate", args.frame_rate))
+        output_path = _sample_output_path(result_directory, sample.get("output_path"), index)
+        logging.info("Generating batch sample %d/%d -> %s", index + 1, len(samples), output_path)
+        video, audio = pipeline(
+            prompt=sample["prompt"], seed=int(sample.get("seed", args.seed)),
+            height=int(sample.get("height", args.height)), width=int(sample.get("width", args.width)),
+            num_frames=sample_frames, frame_rate=sample_fps, images=args.images,
+            video_conditioning=[(sample["reference_video"], float(sample.get("reference_strength", 1.0)))],
+            track=sample.get("track"), tiling_config=tiling_config,
+            conditioning_attention_strength=conditioning_attention_strength,
+            skip_stage_2=args.skip_stage_2,
+            conditioning_attention_mask=conditioning_attention_mask,
+        )
+        encode_video(video=video, fps=sample_fps, audio=audio, output_path=output_path,
+                     video_chunks_number=get_video_chunks_number(sample_frames, tiling_config))
+
+
+def _read_batch_samples(path: Path) -> list[dict[str, Any]]:
+    """Validate and resolve paths in the batch manifest relative to the JSON file."""
+    with path.expanduser().open(encoding="utf-8") as handle:
+        document = json.load(handle)
+    samples = document.get("samples") if isinstance(document, dict) else document
+    if not isinstance(samples, list) or not samples:
+        raise ValueError(f"{path} must contain a non-empty samples array")
+    base = path.expanduser().resolve().parent
+    result = []
+    for index, value in enumerate(samples):
+        if not isinstance(value, dict):
+            raise TypeError(f"Sample {index} in {path} must be an object")
+        missing = {"prompt", "reference_video", "track"} - value.keys()
+        if missing:
+            raise ValueError(f"Sample {index} in {path} is missing: {', '.join(sorted(missing))}")
+        sample = dict(value)
+        for key in ("reference_video", "track"):
+            if sample.get(key) and not Path(sample[key]).expanduser().is_absolute():
+                sample[key] = str(base / sample[key])
+        result.append(sample)
+    return result
+
+
+def _result_directory(
+    *,
+    output_root: str | Path,
+    track_prope_weights: str | Path | None,
+    spatial_track_encoder_weights: str | Path | None,
+) -> Path:
+    """Build the module-specific result directory below ``output_root``.
+
+    Checkpoint filenames are used verbatim, including their extension.
+    """
+    names = []
+    if track_prope_weights is not None:
+        names.append(Path(track_prope_weights).expanduser().name)
+    if spatial_track_encoder_weights is not None:
+        names.append(Path(spatial_track_encoder_weights).expanduser().name)
+    child_name = "__".join(names) if names else "vanilla_results"
+    return Path(output_root).expanduser() / child_name
+
+
+def _sample_output_path(result_directory: Path, requested_path: str | Path | None, index: int) -> str:
+    """Return a unique output file inside the selected result directory."""
+    if requested_path:
+        filename = Path(requested_path).name
+        if not filename:
+            raise ValueError(f"Sample {index} output_path must include a file name")
+    else:
+        filename = f"sample_{index:04d}.mp4"
+    return str(result_directory / filename)
 
 
 def _load_mask_video(
