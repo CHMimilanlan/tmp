@@ -1770,7 +1770,7 @@ class LtxvTrainer:
         #   - ic_lora_summarizer.*      (IC-LoRA 空间 Summary 模块)
         #   - summary_to_audio.*        (直接投影路径)
         #   - audio_to_summary_attn.*   (Audio->Summary 注意力路径)
-        #   - summary_scale             (标量 Parameter)
+        #   - summary_scale             (单元素 Parameter，兼容 FSDP)
         # ---------------------------------------------------------
         track_summary_state_dict: dict[str, Tensor] = {}
 

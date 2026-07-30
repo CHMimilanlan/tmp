@@ -698,7 +698,11 @@ class BasicAVTransformerBlockWithTrackSummary(BasicAVTransformerBlock):
 
         # Keep this at one: the zero-initialized output projection then receives
         # gradients immediately, while the new residual initially remains zero.
-        self.summary_scale = nn.Parameter(torch.tensor(1.0))
+        # FSDP cannot shard scalar parameters, so retain the scalar semantics
+        # while storing the value as a one-element vector.
+        self.summary_scale = nn.Parameter(
+            torch.ones(1, device=device, dtype=dtype)
+        )
 
         # Move the newly created modules onto the requested device/dtype so they
         # match the already-loaded base block.
@@ -713,9 +717,6 @@ class BasicAVTransformerBlockWithTrackSummary(BasicAVTransformerBlock):
             self.summary_to_audio = self.summary_to_audio.to(
                 device=device, dtype=dtype
             )
-        self.summary_scale = nn.Parameter(
-            self.summary_scale.data.to(device=device, dtype=dtype)
-        )
 
     def set_summary_source_mode(self, source_mode: str) -> None:
         """
