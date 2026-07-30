@@ -1,0 +1,180 @@
+DEBUG    [rank 0] 🎯 Using FlexibleStrategy training strategy (audio enabled 🔈)                                                                              __init__.py:89
+DEBUG    [rank 0] Loading text encoder for validation embedding caching...                                                                   validation_runner_bakcup.py:262
+DEBUG    [rank 0] Loading embeddings processor for validation embedding caching...                                                           validation_runner_bakcup.py:267
+INFO     [rank 0] Pre-computing embeddings for 1 validation prompts...                                                                       validation_runner_bakcup.py:272
+DEBUG    [rank 0] Validation prompt embeddings cached. Text encoder unloaded.                                                                validation_runner_bakcup.py:293
+DEBUG    [rank 0] Loading VAE encoder for validation media encoding...                                                                       validation_runner_bakcup.py:327
+INFO     [rank 0] Pre-encoding conditioning media for 1 validation samples...                                                                validation_runner_bakcup.py:333
+INFO     [rank 0] Validation conditioning media cached on CPU.                                                                               validation_runner_bakcup.py:341
+DEBUG    [rank 0] Loading video VAE decoder for validation...                                                                                validation_runner_bakcup.py:409
+DEBUG    [rank 0] Loading audio decoder and vocoder for validation...                                                                        validation_runner_bakcup.py:420
+INFO     [rank 0] Cached validation track 1:                                                                                                        validation_runner.py:106
+         /data/vjuicefs_ai_camera_jgroup_video/public_data/Video_Data/VideoAudioData/SpatializeDataset_LTX/validation_samples/left_to_right_tracks.                         
+         pt                                                                                                                                                                 
+DEBUG    [rank 0] Loading transformer...                                                                                                                      trainer.py:438
+INFO     [rank 0] Building transformer with attention backends -- self: SDPA[CUDNN_ATTENTION>FLASH_ATTENTION>EFFICIENT_ATTENTION>MATH], masked:                  model.py:85
+         SDPA[CUDNN_ATTENTION>FLASH_ATTENTION>EFFICIENT_ATTENTION>MATH]                                                                                                     
+INFO     [rank 1] Building transformer with attention backends -- self: SDPA[CUDNN_ATTENTION>FLASH_ATTENTION>EFFICIENT_ATTENTION>MATH], masked:                  model.py:85
+         SDPA[CUDNN_ATTENTION>FLASH_ATTENTION>EFFICIENT_ATTENTION>MATH]                                                                                                     
+INFO     [rank 0] Track-Summary initialized in 48/48 transformer blocks.                                                                                      trainer.py:521
+INFO     [rank 0] Track-Summary source mode is set to track_xy                                                                                                trainer.py:526
+INFO     [rank 0] SpatialTrackEncoder is disabled; using the original LTX-2.3 training input pipeline.                                                        trainer.py:572
+DEBUG    [rank 0] Loading embeddings processor...                                                                                                             trainer.py:588
+INFO     [rank 0] FSDP distributed training enabled with 2 processes                                                                                         trainer.py:1360
+INFO     [rank 0] Local batch size: 1, global batch size: 2                                                                                                  trainer.py:1367
+DEBUG    [rank 0] Trainable params count: 276,824,064                                                                                                         trainer.py:642
+INFO     [rank 0] Initializing AV2AV LoRA from pretrained checkpoint:                                                                                        trainer.py:2105
+         /data/vjuicefs_ai_camera_jgroup_video/public_data/Pretrained_models/VideoAudioModels/LTX-2.3-22b-IC-LoRA-Motion-Track-Control/ltx-2.3-22b-ic-lora-m                
+         otion-track-control-ref0.5.safetensors                                                                                                                             
+INFO     [rank 0] Successfully initialized AV2AV LoRA from Motion Track LoRA:                                                                                trainer.py:2290
+           source LoRA tensors: 960                                                                                                                                         
+           loaded LoRA tensors: 960                                                                                                                                         
+           loaded LoRA modules: 480                                                                                                                                         
+           newly initialized AV2AV-only LoRA tensors: 1536                                                                                                                  
+           SpatialTrackEncoder: kept at its own initialization                                                                                                              
+DEBUG    [rank 0] FSDP: casting transformer to FP32 for uniform dtype                                                                                        trainer.py:1014
+INFO     [rank 0] Installed PEFT-aware FSDP auto-wrap policy.                                                                                                trainer.py:1036
+[rank1]: Traceback (most recent call last):
+[rank1]:   File "/data/vjuicefs_ai_camera_jgroup_acadmic/public_data/11194554/WorkSpace/LTX-2/packages/ltx-trainer/scripts/train.py", line 63, in <module>
+[rank1]:     app()
+[rank1]:   File "/root/miniconda3/envs/ltx/lib/python3.10/site-packages/typer/main.py", line 1152, in __call__
+[rank1]:     raise e
+[rank1]:   File "/root/miniconda3/envs/ltx/lib/python3.10/site-packages/typer/main.py", line 1135, in __call__
+[rank1]:     return get_command(self)(*args, **kwargs)
+[rank1]:   File "/root/miniconda3/envs/ltx/lib/python3.10/site-packages/click/core.py", line 1442, in __call__
+[rank1]:     return self.main(*args, **kwargs)
+[rank1]:   File "/root/miniconda3/envs/ltx/lib/python3.10/site-packages/typer/core.py", line 709, in main
+[rank1]:     return _main(
+[rank1]:   File "/root/miniconda3/envs/ltx/lib/python3.10/site-packages/typer/core.py", line 188, in _main
+[rank1]:     rv = self.invoke(ctx)
+[rank1]:   File "/root/miniconda3/envs/ltx/lib/python3.10/site-packages/click/core.py", line 1226, in invoke
+[rank1]:     return ctx.invoke(self.callback, **ctx.params)
+[rank1]:   File "/root/miniconda3/envs/ltx/lib/python3.10/site-packages/click/core.py", line 794, in invoke
+[rank1]:     return callback(*args, **kwargs)
+[rank1]:   File "/root/miniconda3/envs/ltx/lib/python3.10/site-packages/typer/main.py", line 1514, in wrapper
+[rank1]:     return callback(**use_params)
+[rank1]:   File "/data/vjuicefs_ai_camera_jgroup_acadmic/public_data/11194554/WorkSpace/LTX-2/packages/ltx-trainer/scripts/train.py", line 58, in main
+[rank1]:     trainer = LtxvTrainer(trainer_config)
+[rank1]:   File "/data/vjuicefs_ai_camera_jgroup_acadmic/public_data/11194554/WorkSpace/LTX-2/packages/ltx-trainer/src/ltx_trainer/trainer.py", line 144, in __init__
+[rank1]:     self._prepare_models_for_training()
+[rank1]:   File "/data/vjuicefs_ai_camera_jgroup_acadmic/public_data/11194554/WorkSpace/LTX-2/packages/ltx-trainer/src/ltx_trainer/trainer.py", line 1050, in _prepare_models_for_training
+[rank1]:     self._transformer = self._accelerator.prepare(
+[rank1]:   File "/root/miniconda3/envs/ltx/lib/python3.10/site-packages/accelerate/accelerator.py", line 1556, in prepare
+[rank1]:     result = tuple(
+[rank1]:   File "/root/miniconda3/envs/ltx/lib/python3.10/site-packages/accelerate/accelerator.py", line 1557, in <genexpr>
+[rank1]:     self._prepare_one(obj, first_pass=True, device_placement=d) for obj, d in zip(args, device_placement)
+[rank1]:   File "/root/miniconda3/envs/ltx/lib/python3.10/site-packages/accelerate/accelerator.py", line 1402, in _prepare_one
+[rank1]:     return self.prepare_model(obj, device_placement=device_placement)
+[rank1]:   File "/root/miniconda3/envs/ltx/lib/python3.10/site-packages/accelerate/accelerator.py", line 1953, in prepare_model
+[rank1]:     model = FSDP(model, **kwargs)
+[rank1]:   File "/root/miniconda3/envs/ltx/lib/python3.10/site-packages/torch/distributed/fsdp/fully_sharded_data_parallel.py", line 468, in __init__
+[rank1]:     _auto_wrap(
+[rank1]:   File "/root/miniconda3/envs/ltx/lib/python3.10/site-packages/torch/distributed/fsdp/_wrap_utils.py", line 101, in _auto_wrap
+[rank1]:     _recursive_wrap(**recursive_wrap_kwargs, **root_kwargs)  # type: ignore[arg-type]
+[rank1]:   File "/root/miniconda3/envs/ltx/lib/python3.10/site-packages/torch/distributed/fsdp/wrap.py", line 533, in _recursive_wrap
+[rank1]:     wrapped_child, num_wrapped_params = _recursive_wrap(
+[rank1]:   File "/root/miniconda3/envs/ltx/lib/python3.10/site-packages/torch/distributed/fsdp/wrap.py", line 533, in _recursive_wrap
+[rank1]:     wrapped_child, num_wrapped_params = _recursive_wrap(
+[rank1]:   File "/root/miniconda3/envs/ltx/lib/python3.10/site-packages/torch/distributed/fsdp/wrap.py", line 533, in _recursive_wrap
+[rank1]:     wrapped_child, num_wrapped_params = _recursive_wrap(
+[rank1]:   [Previous line repeated 1 more time]
+[rank1]:   File "/root/miniconda3/envs/ltx/lib/python3.10/site-packages/torch/distributed/fsdp/wrap.py", line 551, in _recursive_wrap
+[rank1]:     return _wrap(module, wrapper_cls, **kwargs), nonwrapped_numel
+[rank1]:   File "/root/miniconda3/envs/ltx/lib/python3.10/site-packages/torch/distributed/fsdp/wrap.py", line 480, in _wrap
+[rank1]:     return wrapper_cls(module, **kwargs)
+[rank1]:   File "/root/miniconda3/envs/ltx/lib/python3.10/site-packages/torch/distributed/fsdp/fully_sharded_data_parallel.py", line 494, in __init__
+[rank1]:     _init_param_handle_from_module(
+[rank1]:   File "/root/miniconda3/envs/ltx/lib/python3.10/site-packages/torch/distributed/fsdp/_init_utils.py", line 613, in _init_param_handle_from_module
+[rank1]:     _verify_managed_params(fully_sharded_module, managed_params)
+[rank1]:   File "/root/miniconda3/envs/ltx/lib/python3.10/site-packages/torch/distributed/fsdp/_init_utils.py", line 551, in _verify_managed_params
+[rank1]:     raise ValueError(
+[rank1]: ValueError: FSDP doesn't support scalar parameters. Change summary_scale to a 1D tensor with numel equal to 1.
+[rank0]: Traceback (most recent call last):
+[rank0]:   File "/data/vjuicefs_ai_camera_jgroup_acadmic/public_data/11194554/WorkSpace/LTX-2/packages/ltx-trainer/scripts/train.py", line 63, in <module>
+[rank0]:     app()
+[rank0]:   File "/root/miniconda3/envs/ltx/lib/python3.10/site-packages/typer/main.py", line 1152, in __call__
+[rank0]:     raise e
+[rank0]:   File "/root/miniconda3/envs/ltx/lib/python3.10/site-packages/typer/main.py", line 1135, in __call__
+[rank0]:     return get_command(self)(*args, **kwargs)
+[rank0]:   File "/root/miniconda3/envs/ltx/lib/python3.10/site-packages/click/core.py", line 1442, in __call__
+[rank0]:     return self.main(*args, **kwargs)
+[rank0]:   File "/root/miniconda3/envs/ltx/lib/python3.10/site-packages/typer/core.py", line 709, in main
+[rank0]:     return _main(
+[rank0]:   File "/root/miniconda3/envs/ltx/lib/python3.10/site-packages/typer/core.py", line 188, in _main
+[rank0]:     rv = self.invoke(ctx)
+[rank0]:   File "/root/miniconda3/envs/ltx/lib/python3.10/site-packages/click/core.py", line 1226, in invoke
+[rank0]:     return ctx.invoke(self.callback, **ctx.params)
+[rank0]:   File "/root/miniconda3/envs/ltx/lib/python3.10/site-packages/click/core.py", line 794, in invoke
+[rank0]:     return callback(*args, **kwargs)
+[rank0]:   File "/root/miniconda3/envs/ltx/lib/python3.10/site-packages/typer/main.py", line 1514, in wrapper
+[rank0]:     return callback(**use_params)
+[rank0]:   File "/data/vjuicefs_ai_camera_jgroup_acadmic/public_data/11194554/WorkSpace/LTX-2/packages/ltx-trainer/scripts/train.py", line 58, in main
+[rank0]:     trainer = LtxvTrainer(trainer_config)
+[rank0]:   File "/data/vjuicefs_ai_camera_jgroup_acadmic/public_data/11194554/WorkSpace/LTX-2/packages/ltx-trainer/src/ltx_trainer/trainer.py", line 144, in __init__
+[rank0]:     self._prepare_models_for_training()
+[rank0]:   File "/data/vjuicefs_ai_camera_jgroup_acadmic/public_data/11194554/WorkSpace/LTX-2/packages/ltx-trainer/src/ltx_trainer/trainer.py", line 1050, in _prepare_models_for_training
+[rank0]:     self._transformer = self._accelerator.prepare(
+[rank0]:   File "/root/miniconda3/envs/ltx/lib/python3.10/site-packages/accelerate/accelerator.py", line 1556, in prepare
+[rank0]:     result = tuple(
+[rank0]:   File "/root/miniconda3/envs/ltx/lib/python3.10/site-packages/accelerate/accelerator.py", line 1557, in <genexpr>
+[rank0]:     self._prepare_one(obj, first_pass=True, device_placement=d) for obj, d in zip(args, device_placement)
+[rank0]:   File "/root/miniconda3/envs/ltx/lib/python3.10/site-packages/accelerate/accelerator.py", line 1402, in _prepare_one
+[rank0]:     return self.prepare_model(obj, device_placement=device_placement)
+[rank0]:   File "/root/miniconda3/envs/ltx/lib/python3.10/site-packages/accelerate/accelerator.py", line 1953, in prepare_model
+[rank0]:     model = FSDP(model, **kwargs)
+[rank0]:   File "/root/miniconda3/envs/ltx/lib/python3.10/site-packages/torch/distributed/fsdp/fully_sharded_data_parallel.py", line 468, in __init__
+[rank0]:     _auto_wrap(
+[rank0]:   File "/root/miniconda3/envs/ltx/lib/python3.10/site-packages/torch/distributed/fsdp/_wrap_utils.py", line 101, in _auto_wrap
+[rank0]:     _recursive_wrap(**recursive_wrap_kwargs, **root_kwargs)  # type: ignore[arg-type]
+[rank0]:   File "/root/miniconda3/envs/ltx/lib/python3.10/site-packages/torch/distributed/fsdp/wrap.py", line 533, in _recursive_wrap
+[rank0]:     wrapped_child, num_wrapped_params = _recursive_wrap(
+[rank0]:   File "/root/miniconda3/envs/ltx/lib/python3.10/site-packages/torch/distributed/fsdp/wrap.py", line 533, in _recursive_wrap
+[rank0]:     wrapped_child, num_wrapped_params = _recursive_wrap(
+[rank0]:   File "/root/miniconda3/envs/ltx/lib/python3.10/site-packages/torch/distributed/fsdp/wrap.py", line 533, in _recursive_wrap
+[rank0]:     wrapped_child, num_wrapped_params = _recursive_wrap(
+[rank0]:   [Previous line repeated 1 more time]
+[rank0]:   File "/root/miniconda3/envs/ltx/lib/python3.10/site-packages/torch/distributed/fsdp/wrap.py", line 551, in _recursive_wrap
+[rank0]:     return _wrap(module, wrapper_cls, **kwargs), nonwrapped_numel
+[rank0]:   File "/root/miniconda3/envs/ltx/lib/python3.10/site-packages/torch/distributed/fsdp/wrap.py", line 480, in _wrap
+[rank0]:     return wrapper_cls(module, **kwargs)
+[rank0]:   File "/root/miniconda3/envs/ltx/lib/python3.10/site-packages/torch/distributed/fsdp/fully_sharded_data_parallel.py", line 494, in __init__
+[rank0]:     _init_param_handle_from_module(
+[rank0]:   File "/root/miniconda3/envs/ltx/lib/python3.10/site-packages/torch/distributed/fsdp/_init_utils.py", line 613, in _init_param_handle_from_module
+[rank0]:     _verify_managed_params(fully_sharded_module, managed_params)
+[rank0]:   File "/root/miniconda3/envs/ltx/lib/python3.10/site-packages/torch/distributed/fsdp/_init_utils.py", line 551, in _verify_managed_params
+[rank0]:     raise ValueError(
+[rank0]: ValueError: FSDP doesn't support scalar parameters. Change summary_scale to a 1D tensor with numel equal to 1.
+[rank0]:[W730 13:28:39.438491812 ProcessGroupNCCL.cpp:1524] Warning: WARNING: destroy_process_group() was not called before program exit, which can leak resources. For more info, please see https://pytorch.org/docs/stable/distributed.html#shutdown (function operator())
+W0730 13:28:41.921000 3576094 site-packages/torch/distributed/elastic/multiprocessing/api.py:908] Sending process 3576224 closing signal SIGTERM
+E0730 13:28:42.386000 3576094 site-packages/torch/distributed/elastic/multiprocessing/api.py:882] failed (exitcode: 1) local_rank: 1 (pid: 3576225) of binary: /root/miniconda3/envs/ltx/bin/python3.10
+Traceback (most recent call last):
+  File "/root/miniconda3/envs/ltx/bin/accelerate", line 6, in <module>
+    sys.exit(main())
+  File "/root/miniconda3/envs/ltx/lib/python3.10/site-packages/accelerate/commands/accelerate_cli.py", line 50, in main
+    args.func(args)
+  File "/root/miniconda3/envs/ltx/lib/python3.10/site-packages/accelerate/commands/launch.py", line 1392, in launch_command
+    multi_gpu_launcher(args)
+  File "/root/miniconda3/envs/ltx/lib/python3.10/site-packages/accelerate/commands/launch.py", line 1023, in multi_gpu_launcher
+    distrib_run.run(args)
+  File "/root/miniconda3/envs/ltx/lib/python3.10/site-packages/torch/distributed/run.py", line 927, in run
+    elastic_launch(
+  File "/root/miniconda3/envs/ltx/lib/python3.10/site-packages/torch/distributed/launcher/api.py", line 156, in __call__
+    return launch_agent(self._config, self._entrypoint, list(args))
+  File "/root/miniconda3/envs/ltx/lib/python3.10/site-packages/torch/distributed/launcher/api.py", line 293, in launch_agent
+    raise ChildFailedError(
+torch.distributed.elastic.multiprocessing.errors.ChildFailedError: 
+============================================================
+scripts/train.py FAILED
+------------------------------------------------------------
+Failures:
+  <NO_OTHER_FAILURES>
+------------------------------------------------------------
+Root Cause (first observed failure):
+[0]:
+  time      : 2026-07-30_13:28:41
+  host      : usage-video-20260401174850866-worker-0.usage-video-20260401174850866.11194554.svc.cluster2.v-wl-1
+  rank      : 1 (local_rank: 1)
+  exitcode  : 1 (pid: 3576225)
+  error_file: <N/A>
+  traceback : To enable traceback see: https://pytorch.org/docs/stable/elastic/errors.html
+============================================================
