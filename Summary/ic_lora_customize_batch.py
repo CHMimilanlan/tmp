@@ -72,6 +72,8 @@ class ICLoraPipeline:
         offload_mode: OffloadMode = OffloadMode.NONE,
         spatial_track_encoder_path: str | Path | None = None,
         track_prope_path: str | Path | None = None,
+        track_summary_path: str | Path | None = None,
+        summary_source_mode: str = "reference_guided_target",
     ):
         self.device = device or get_device()
         self.dtype = torch.bfloat16
@@ -114,9 +116,13 @@ class ICLoraPipeline:
 
         self.use_spatial_track_encoder = spatial_track_encoder_path is not None
         self.use_track_prope = track_prope_path is not None
+        self.use_track_summary = track_summary_path is not None
+        self.summary_source_mode = summary_source_mode
         self._configure_track_modules(
             spatial_track_encoder_path=spatial_track_encoder_path,
             track_prope_path=track_prope_path,
+            track_summary_path=track_summary_path,
+            summary_source_mode=summary_source_mode,
         )
 
         # Read reference scale factors from LoRA metadata.
@@ -201,8 +207,11 @@ class ICLoraPipeline:
                 f"conditioning_attention_strength must be in [0.0, 1.0], got {conditioning_attention_strength}"
             )
 
-        if self.use_track_prope and track is None:
-            raise ValueError("--track-prope-weights requires a track for every sample")
+        if (
+            self.use_track_prope
+            or (self.use_track_summary and self.summary_source_mode in {"track_xy", "hybrid"})
+        ) and track is None:
+            raise ValueError("The selected track module configuration requires a track for every sample")
         track_xy, track_valid = self._prepare_track(track, num_frames, frame_rate)
 
         generator = torch.Generator(device=self.device).manual_seed(seed)
@@ -317,6 +326,8 @@ class ICLoraPipeline:
         *,
         spatial_track_encoder_path: str | Path | None,
         track_prope_path: str | Path | None,
+        track_summary_path: str | Path | None,
+        summary_source_mode: str,
     ) -> None:
         """Install hooks that configure transformers when a stage creates them.
 
@@ -326,15 +337,18 @@ class ICLoraPipeline:
         avoids trying to discover a transformer before it has been created and
         also works with offloading modes that create a new instance later.
         """
-        if not (spatial_track_encoder_path or track_prope_path):
+        if not (spatial_track_encoder_path or track_prope_path or track_summary_path):
             return
 
         spatial_path = self._validate_weights_path(spatial_track_encoder_path)
         prope_path = self._validate_weights_path(track_prope_path)
+        summary_path = self._validate_weights_path(track_summary_path)
         self._wrap_transformer_context(
             self.stage_1,
             spatial_track_encoder_path=spatial_path,
             track_prope_path=prope_path,
+            track_summary_path=summary_path,
+            summary_source_mode=summary_source_mode,
         )
         # Stage 2 has no reference-video Spatial Track Encoder conditioning,
         # but Track-PRoPE must be present for its audio denoising blocks.
@@ -343,6 +357,8 @@ class ICLoraPipeline:
                 self.stage_2,
                 spatial_track_encoder_path=None,
                 track_prope_path=prope_path,
+                track_summary_path=None,
+                summary_source_mode=summary_source_mode,
             )
 
     @staticmethod
@@ -360,6 +376,8 @@ class ICLoraPipeline:
         *,
         spatial_track_encoder_path: Path | None,
         track_prope_path: Path | None,
+        track_summary_path: Path | None,
+        summary_source_mode: str,
     ) -> None:
         original_transformer_ctx = stage._transformer_ctx
 
@@ -370,6 +388,8 @@ class ICLoraPipeline:
                     transformer,
                     spatial_track_encoder_path=spatial_track_encoder_path,
                     track_prope_path=track_prope_path,
+                    track_summary_path=track_summary_path,
+                    summary_source_mode=summary_source_mode,
                 )
                 yield transformer
 
@@ -381,8 +401,13 @@ class ICLoraPipeline:
         *,
         spatial_track_encoder_path: Path | None,
         track_prope_path: Path | None,
+        track_summary_path: Path | None,
+        summary_source_mode: str,
     ) -> None:
-        signature = (spatial_track_encoder_path, track_prope_path)
+        signature = (
+            spatial_track_encoder_path, track_prope_path,
+            track_summary_path, summary_source_mode,
+        )
         if getattr(transformer, "_ic_track_modules_signature", None) == signature:
             return
 
@@ -400,6 +425,22 @@ class ICLoraPipeline:
                 block.initialize_track_prope(device=self.device, dtype=self.dtype)
             self._load_module_weights(transformer, track_prope_path, "track_prope")
 
+        if track_summary_path is not None:
+            blocks = getattr(core, "transformer_blocks", None)
+            if blocks is None:
+                raise RuntimeError("The lazily loaded transformer has no transformer_blocks")
+            use_audio_summary = self._summary_uses_audio_attention(track_summary_path)
+            for block in blocks:
+                if not hasattr(block, "initialize_track_summary"):
+                    raise RuntimeError(
+                        "The loaded transformer block does not implement initialize_track_summary()"
+                    )
+                block.use_ic_lora_summary = True
+                block.use_audio_to_summary_attention = use_audio_summary
+                block.initialize_track_summary(device=self.device, dtype=self.dtype)
+                block.set_summary_source_mode(summary_source_mode)
+            self._load_module_weights(transformer, track_summary_path, "track_summary")
+
         if spatial_track_encoder_path is not None:
             from ltx_core.model.transformer.spatial_track_encoder import SpatialTrackEncoderConfig
 
@@ -416,6 +457,30 @@ class ICLoraPipeline:
         transformer._ic_track_modules_signature = signature
 
     @staticmethod
+    def _summary_uses_audio_attention(path: Path) -> bool:
+        """Infer which mutually exclusive Summary audio adapter was trained."""
+        if path.suffix == ".safetensors":
+            from safetensors import safe_open
+
+            with safe_open(str(path), framework="pt", device="cpu") as handle:
+                keys = list(handle.keys())
+        else:
+            state = torch.load(path, map_location="cpu", weights_only=True)
+            if isinstance(state, dict) and "state_dict" in state:
+                state = state["state_dict"]
+            if not isinstance(state, dict):
+                raise TypeError(f"Expected a state dict in {path}")
+            keys = list(state)
+        has_attention = any(".audio_to_summary_attn." in key for key in keys)
+        has_projection = any(".summary_to_audio." in key for key in keys)
+        if has_attention == has_projection:
+            raise ValueError(
+                f"Track-Summary checkpoint {path} must contain exactly one of "
+                "audio_to_summary_attn or summary_to_audio weights"
+            )
+        return has_attention
+
+    @staticmethod
     def _load_module_weights(model: torch.nn.Module, path: str | Path, marker: str) -> None:
         """Load a track-module checkpoint into ``model`` (an ``X0Model``).
 
@@ -426,6 +491,7 @@ class ICLoraPipeline:
         * ``spatial_track_encoder`` -> a *relative* key (e.g. ``video_pos``,
           ``track_encoder.layers.0...``) with the ``spatial_track_encoder.``
           prefix already stripped.
+        * ``track_summary``         -> ``transformer_blocks.{i}.<summary module>.<param>``.
 
         The live model, however, is an ``X0Model`` whose real LTX transformer
         lives under ``velocity_model``, so its state-dict keys look like
@@ -457,6 +523,18 @@ class ICLoraPipeline:
                 if position < 0 or ".audio_track_prope." not in key:
                     return None
                 # e.g. "transformer_blocks.0.audio_track_prope.q_proj.weight"
+                return key[position:]
+        elif marker == "track_summary":
+            block_marker = "transformer_blocks."
+            summary_markers = (
+                ".ic_lora_summarizer.", ".summary_to_audio.",
+                ".audio_to_summary_attn.", ".summary_scale",
+            )
+
+            def to_anchor(key: str) -> str | None:
+                position = key.find(block_marker)
+                if position < 0 or not any(item in key for item in summary_markers):
+                    return None
                 return key[position:]
         elif marker == "spatial_track_encoder":
             module_prefix = "spatial_track_encoder."
@@ -654,6 +732,17 @@ def main() -> None:
     parser.add_argument("--spatial-track-encoder-weights", type=Path)
     parser.add_argument("--track-prope-weights", type=Path)
     parser.add_argument(
+        "--track-summary-weights",
+        type=Path,
+        help="Enable Track-Summary and load its trained module checkpoint.",
+    )
+    parser.add_argument(
+        "--summary-source-mode",
+        choices=("track_xy", "reference_tokens", "reference_guided_target", "hybrid"),
+        default="reference_guided_target",
+        help="Summary token source used by a loaded Track-Summary module.",
+    )
+    parser.add_argument(
         "--skip-stage-2",
         action="store_true",
         help=(
@@ -702,12 +791,15 @@ def main() -> None:
         offload_mode=args.offload_mode,
         spatial_track_encoder_path=args.spatial_track_encoder_weights,
         track_prope_path=args.track_prope_weights,
+        track_summary_path=args.track_summary_weights,
+        summary_source_mode=args.summary_source_mode,
     )
     tiling_config = TilingConfig.default()
     result_directory = _result_directory(
         output_root=args.output_path,
         track_prope_weights=args.track_prope_weights,
         spatial_track_encoder_weights=args.spatial_track_encoder_weights,
+        track_summary_weights=args.track_summary_weights,
     )
     result_directory.mkdir(parents=True, exist_ok=True)
     # Separate the plain generated videos from the side-by-side concat videos
@@ -804,6 +896,7 @@ def _result_directory(
     output_root: str | Path,
     track_prope_weights: str | Path | None,
     spatial_track_encoder_weights: str | Path | None,
+    track_summary_weights: str | Path | None,
 ) -> Path:
     """Build the module-specific result directory below ``output_root``.
 
@@ -814,6 +907,8 @@ def _result_directory(
         names.append(Path(track_prope_weights).expanduser().name)
     if spatial_track_encoder_weights is not None:
         names.append(Path(spatial_track_encoder_weights).expanduser().name)
+    if track_summary_weights is not None:
+        names.append(Path(track_summary_weights).expanduser().name)
     child_name = "__".join(names) if names else "vanilla_results"
     return Path(output_root).expanduser() / child_name
 
@@ -982,4 +1077,3 @@ def _decode_mono_diff_to_stereo(video_path: str | Path, output_dir: str | Path) 
 
 if __name__ == "__main__":
     main()
-
