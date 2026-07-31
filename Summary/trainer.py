@@ -214,7 +214,7 @@ class LtxvTrainer:
 
         # Create progress tracking (disabled for non-main processes or when explicitly disabled)
         progress_enabled = IS_MAIN_PROCESS and not disable_progress_bars
-        # progress_enabled = False
+        progress_enabled = False
         progress = TrainingProgress(
             enabled=progress_enabled,
             total_steps=remaining_steps,
