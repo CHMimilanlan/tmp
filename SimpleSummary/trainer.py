@@ -97,9 +97,11 @@ class LtxvTrainer:
         self._track_prope_module_count = 0
         self.use_ic_lora_summary = self._config.use_ic_lora_summary
         self.use_audio_summary = self._config.use_audio_summary
+        self.use_simple_summary = self._config.use_simple_summary
         self.transformer_args = {
             "use_track_prope":self.use_track_prope,
             "use_ic_lora_summary":self.use_ic_lora_summary,
+            "use_simple_summary":self.use_simple_summary,
             "use_audio_summary":self.use_audio_summary,
         }
         self.summary_source_mode = self._config.summary_source_mode
@@ -214,7 +216,7 @@ class LtxvTrainer:
 
         # Create progress tracking (disabled for non-main processes or when explicitly disabled)
         progress_enabled = IS_MAIN_PROCESS and not disable_progress_bars
-        progress_enabled = False
+        # progress_enabled = False
         progress = TrainingProgress(
             enabled=progress_enabled,
             total_steps=remaining_steps,
@@ -528,15 +530,55 @@ class LtxvTrainer:
             )
 
         # ---------------------------------------------------------
+        # Optionally initialize Simple-Summary modules.
+        #
+        # Like Track-PRoPE and Track-Summary, the base transformer is created
+        # without the extra Simple-Summary submodules so the checkpoint can be
+        # loaded cleanly. The modules are then created here by calling
+        # initialize_simple_summary().
+        # ---------------------------------------------------------
+        if self.use_simple_summary:
+            initialized_simple_summary_blocks = 0
+            transformer_blocks = getattr(
+                self._transformer,
+                "transformer_blocks",
+                None,
+            )
+            if transformer_blocks is None:
+                raise RuntimeError(
+                    "Simple-Summary is enabled, but the loaded transformer "
+                    "does not contain transformer_blocks."
+                )
+
+            for block_index, block in enumerate(transformer_blocks):
+                if not hasattr(block, "initialize_simple_summary"):
+                    raise RuntimeError(
+                        f"Transformer block {block_index} does not implement "
+                        "initialize_simple_summary(). Make sure the modified "
+                        "transformer.py is being imported."
+                    )
+                block.initialize_simple_summary(
+                    device=torch.device("cpu"),
+                    dtype=torch.bfloat16,
+                )
+                if block.simple_summary is not None:
+                    initialized_simple_summary_blocks += 1
+            logger.info(
+                "Simple-Summary initialized in "
+                f"{initialized_simple_summary_blocks}/{len(transformer_blocks)} "
+                "transformer blocks."
+            )
+
+        # ---------------------------------------------------------
         # Optionally initialize SpatialTrackEncoder
         # ---------------------------------------------------------
         if self.use_spatial_track_encoder:
             spatial_cfg = SpatialTrackEncoderConfig(
                 dim=128,
                 video_t=16,
-                video_h=8,
-                video_w=12,
-                audio_t=122,
+                video_h=6,
+                video_w=10,
+                audio_t=126,
                 num_heads=8,
                 dropout=0.0,
                 encoder_depth=4,
@@ -1017,7 +1059,6 @@ class LtxvTrainer:
             self._transformer = self._transformer.to(
                 dtype=torch.float32
             )
-
             # PEFT + FSDP 必须使用能够区分可训练和冻结参数的 wrap policy。
             from peft.utils.other import fsdp_auto_wrap_policy
 
@@ -1533,6 +1574,11 @@ class LtxvTrainer:
             save_dir
             / f"track_summary_step_{self._global_step:05d}.safetensors"
         )
+
+        simple_summary_path = (
+            save_dir
+            / f"simple_summary_step_{self._global_step:05d}.safetensors"
+        )
     
         # 所有 rank 共同参加唯一一次 state-dict collective
         self._accelerator.wait_for_everyone()
@@ -1867,6 +1913,109 @@ class LtxvTrainer:
                     ),
                 },
             )
+
+        # ---------------------------------------------------------
+        # Extract Simple-Summary modules from the already gathered state dict
+        #
+        # 重要：
+        # 与 Track-PRoPE / Track-Summary 相同，不要调用子模块的 state_dict()。
+        # full_state_dict 已经由所有 rank 共同完成了 FSDP gather。
+        # 这里只进行普通 Python 字典筛选，不会触发新的 collective。
+        #
+        # Simple-Summary 相关的额外模块包括：
+        #   - simple_summary.*          (SimpleTrackSummaryTokens 模块)
+        #   - simple_summary_scale      (一元素 Parameter，兼容 FSDP)
+        # ---------------------------------------------------------
+        simple_summary_state_dict: dict[str, Tensor] = {}
+
+        simple_summary_markers = (
+            ".simple_summary.",
+            ".simple_summary_scale",
+        )
+
+        for raw_key, value in full_state_dict.items():
+            if not isinstance(value, Tensor):
+                continue
+
+            transformer_marker = "transformer_blocks."
+
+            transformer_position = raw_key.find(
+                transformer_marker
+            )
+
+            if transformer_position < 0:
+                continue
+
+            normalized_key = raw_key[
+                transformer_position:
+            ]
+
+            if not any(
+                marker in normalized_key
+                for marker in simple_summary_markers
+            ):
+                continue
+
+            if normalized_key in simple_summary_state_dict:
+                raise RuntimeError(
+                    "Duplicate Simple-Summary checkpoint key detected: "
+                    f"{normalized_key}\n"
+                    f"Original full-state key: {raw_key}"
+                )
+
+            simple_summary_state_dict[normalized_key] = (
+                value.detach()
+                .to(
+                    device="cpu",
+                    dtype=save_dtype,
+                )
+                .contiguous()
+            )
+
+        if self.use_simple_summary:
+            if not simple_summary_state_dict:
+                possible_keys = [
+                    key
+                    for key in full_state_dict
+                    if "summary" in key.lower()
+                ]
+
+                raise RuntimeError(
+                    "use_simple_summary=true, but no Simple-Summary "
+                    "weights were found in full_state_dict.\n"
+                    f"Possible related keys: {possible_keys[:50]}"
+                )
+
+            # 检查保存结果覆盖了多少个 Transformer Block
+            saved_simple_summary_block_indices: set[int] = set()
+
+            for key in simple_summary_state_dict:
+                match = re.match(
+                    r"transformer_blocks\.(\d+)\.",
+                    key,
+                )
+
+                if match is None:
+                    raise RuntimeError(
+                        "Invalid normalized Simple-Summary key: "
+                        f"{key}"
+                    )
+
+                saved_simple_summary_block_indices.add(
+                    int(match.group(1))
+                )
+
+            save_file(
+                simple_summary_state_dict,
+                str(simple_summary_path),
+                metadata={
+                    "format": "ltx-simple-summary",
+                    "global_step": str(self._global_step),
+                    "module_count": str(
+                        len(saved_simple_summary_block_indices)
+                    ),
+                },
+            )
     
         logger.info(
             f"LoRA saved to {lora_path}"
@@ -1888,6 +2037,12 @@ class LtxvTrainer:
             logger.info(
                 "Track-Summary saved to "
                 f"{track_summary_path}"
+            )
+
+        if simple_summary_state_dict:
+            logger.info(
+                "Simple-Summary saved to "
+                f"{simple_summary_path}"
             )
 
         self._save_training_state(save_dir)
