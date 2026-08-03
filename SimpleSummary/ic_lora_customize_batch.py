@@ -73,6 +73,7 @@ class ICLoraPipeline:
         spatial_track_encoder_path: str | Path | None = None,
         track_prope_path: str | Path | None = None,
         track_summary_path: str | Path | None = None,
+        simple_summary_path: str | Path | None = None,
         summary_source_mode: str = "reference_guided_target",
     ):
         self.device = device or get_device()
@@ -117,11 +118,13 @@ class ICLoraPipeline:
         self.use_spatial_track_encoder = spatial_track_encoder_path is not None
         self.use_track_prope = track_prope_path is not None
         self.use_track_summary = track_summary_path is not None
+        self.use_simple_summary = simple_summary_path is not None
         self.summary_source_mode = summary_source_mode
         self._configure_track_modules(
             spatial_track_encoder_path=spatial_track_encoder_path,
             track_prope_path=track_prope_path,
             track_summary_path=track_summary_path,
+            simple_summary_path=simple_summary_path,
             summary_source_mode=summary_source_mode,
         )
 
@@ -327,6 +330,7 @@ class ICLoraPipeline:
         spatial_track_encoder_path: str | Path | None,
         track_prope_path: str | Path | None,
         track_summary_path: str | Path | None,
+        simple_summary_path: str | Path | None,
         summary_source_mode: str,
     ) -> None:
         """Install hooks that configure transformers when a stage creates them.
@@ -337,17 +341,24 @@ class ICLoraPipeline:
         avoids trying to discover a transformer before it has been created and
         also works with offloading modes that create a new instance later.
         """
-        if not (spatial_track_encoder_path or track_prope_path or track_summary_path):
+        if not (
+            spatial_track_encoder_path
+            or track_prope_path
+            or track_summary_path
+            or simple_summary_path
+        ):
             return
 
         spatial_path = self._validate_weights_path(spatial_track_encoder_path)
         prope_path = self._validate_weights_path(track_prope_path)
         summary_path = self._validate_weights_path(track_summary_path)
+        simple_summary_path = self._validate_weights_path(simple_summary_path)
         self._wrap_transformer_context(
             self.stage_1,
             spatial_track_encoder_path=spatial_path,
             track_prope_path=prope_path,
             track_summary_path=summary_path,
+            simple_summary_path=simple_summary_path,
             summary_source_mode=summary_source_mode,
         )
         # Stage 2 has no reference-video Spatial Track Encoder conditioning,
@@ -358,6 +369,7 @@ class ICLoraPipeline:
                 spatial_track_encoder_path=None,
                 track_prope_path=prope_path,
                 track_summary_path=None,
+                simple_summary_path=None,
                 summary_source_mode=summary_source_mode,
             )
 
@@ -377,6 +389,7 @@ class ICLoraPipeline:
         spatial_track_encoder_path: Path | None,
         track_prope_path: Path | None,
         track_summary_path: Path | None,
+        simple_summary_path: Path | None,
         summary_source_mode: str,
     ) -> None:
         original_transformer_ctx = stage._transformer_ctx
@@ -384,6 +397,7 @@ class ICLoraPipeline:
         transformer_args = {
             "use_track_prope": track_prope_path is not None,
             "use_ic_lora_summary":track_summary_path is not None,
+            "use_simple_summary": simple_summary_path is not None,
             "use_audio_summary":False,
         }
         
@@ -396,6 +410,7 @@ class ICLoraPipeline:
                     spatial_track_encoder_path=spatial_track_encoder_path,
                     track_prope_path=track_prope_path,
                     track_summary_path=track_summary_path,
+                    simple_summary_path=simple_summary_path,
                     summary_source_mode=summary_source_mode,
                 )
                 yield transformer
@@ -409,11 +424,12 @@ class ICLoraPipeline:
         spatial_track_encoder_path: Path | None,
         track_prope_path: Path | None,
         track_summary_path: Path | None,
+        simple_summary_path: Path | None,
         summary_source_mode: str,
     ) -> None:
         signature = (
             spatial_track_encoder_path, track_prope_path,
-            track_summary_path, summary_source_mode,
+            track_summary_path, simple_summary_path, summary_source_mode,
         )
         if getattr(transformer, "_ic_track_modules_signature", None) == signature:
             return
@@ -447,6 +463,19 @@ class ICLoraPipeline:
                 block.initialize_track_summary(device=self.device, dtype=self.dtype)
                 block.set_summary_source_mode(summary_source_mode)
             self._load_module_weights(transformer, track_summary_path, "track_summary")
+
+        if simple_summary_path is not None:
+            blocks = getattr(core, "transformer_blocks", None)
+            if blocks is None:
+                raise RuntimeError("The lazily loaded transformer has no transformer_blocks")
+            for block in blocks:
+                if not hasattr(block, "initialize_simple_summary"):
+                    raise RuntimeError(
+                        "The loaded transformer block does not implement initialize_simple_summary()"
+                    )
+                block.use_simple_summary = True
+                block.initialize_simple_summary(device=self.device, dtype=self.dtype)
+            self._load_module_weights(transformer, simple_summary_path, "simple_summary")
 
         if spatial_track_encoder_path is not None:
             from ltx_core.model.transformer.spatial_track_encoder import SpatialTrackEncoderConfig
@@ -499,6 +528,8 @@ class ICLoraPipeline:
           ``track_encoder.layers.0...``) with the ``spatial_track_encoder.``
           prefix already stripped.
         * ``track_summary``         -> ``transformer_blocks.{i}.<summary module>.<param>``.
+        * ``simple_summary``        -> ``transformer_blocks.{i}.simple_summary.<param>``
+          plus the block's ``simple_summary_scale`` parameter.
 
         The live model, however, is an ``X0Model`` whose real LTX transformer
         lives under ``velocity_model``, so its state-dict keys look like
@@ -541,6 +572,19 @@ class ICLoraPipeline:
             def to_anchor(key: str) -> str | None:
                 position = key.find(block_marker)
                 if position < 0 or not any(item in key for item in summary_markers):
+                    return None
+                return key[position:]
+        elif marker == "simple_summary":
+            block_marker = "transformer_blocks."
+            simple_summary_markers = (
+                ".simple_summary.", ".simple_summary_scale",
+            )
+
+            def to_anchor(key: str) -> str | None:
+                position = key.find(block_marker)
+                if position < 0 or not any(
+                    item in key for item in simple_summary_markers
+                ):
                     return None
                 return key[position:]
         elif marker == "spatial_track_encoder":
@@ -744,6 +788,11 @@ def main() -> None:
         help="Enable Track-Summary and load its trained module checkpoint.",
     )
     parser.add_argument(
+        "--simple-summary-weights",
+        type=Path,
+        help="Enable Simple-Summary and load its trained module checkpoint.",
+    )
+    parser.add_argument(
         "--summary-source-mode",
         choices=("track_xy", "reference_tokens", "reference_guided_target", "hybrid"),
         default="reference_guided_target",
@@ -799,6 +848,7 @@ def main() -> None:
         spatial_track_encoder_path=args.spatial_track_encoder_weights,
         track_prope_path=args.track_prope_weights,
         track_summary_path=args.track_summary_weights,
+        simple_summary_path=args.simple_summary_weights,
         summary_source_mode=args.summary_source_mode,
     )
     tiling_config = TilingConfig.default()
@@ -807,6 +857,7 @@ def main() -> None:
         track_prope_weights=args.track_prope_weights,
         spatial_track_encoder_weights=args.spatial_track_encoder_weights,
         track_summary_weights=args.track_summary_weights,
+        simple_summary_weights=args.simple_summary_weights,
         summary_source_mode=args.summary_source_mode if args.track_summary_weights is not None else None,
     )
     result_directory.mkdir(parents=True, exist_ok=True)
@@ -905,6 +956,7 @@ def _result_directory(
     track_prope_weights: str | Path | None,
     spatial_track_encoder_weights: str | Path | None,
     track_summary_weights: str | Path | None,
+    simple_summary_weights: str | Path | None,
     summary_source_mode: str | None = None,
 ) -> Path:
     """Build the module-specific result directory below ``output_root``.
@@ -922,6 +974,8 @@ def _result_directory(
         names.append(Path(spatial_track_encoder_weights).expanduser().name)
     if track_summary_weights is not None:
         names.append(Path(track_summary_weights).expanduser().name)
+    if simple_summary_weights is not None:
+        names.append(Path(simple_summary_weights).expanduser().name)
     if summary_source_mode:
         names.append(summary_source_mode)
     child_name = "__".join(names) if names else "vanilla_results"
