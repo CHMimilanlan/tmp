@@ -1,0 +1,106 @@
+# =============================================================================
+# Spatial Audio Generator 默认配置
+# 仅保留以下参数仍由命令行传入（不在本文件中配置）：
+#   --dataset_root, --mono_audio, --mask_fps, --mask_threshold,
+#   --use_all_components, --smooth_frames, --use_vggt, --pose_csv
+#
+# 命令行 --config 指定的 YAML 会覆盖默认值；命令行其它显式传入的同名参数会进一步覆盖 YAML。
+# =============================================================================
+
+# -----------------------------------------------------------------------------
+# 1) VGGT 推理（几何预测）
+# -----------------------------------------------------------------------------
+vggt_inference:
+    # hook: 直接调用 VGGT 推理；npz: 复用缓存的原始预测结果
+    vggt_provider: hook
+    # 本地 VGGT checkpoint 目录或 HuggingFace 模型 ID（None 时使用代码内 DEFAULT_VGGT_MODEL_PATH）
+    vggt_model_path: /data/vjuicefs_ai_camera_jgroup_video/public_data/Video_Data/VideoAudioData/VideoAudioModels/VGGT-1B
+    vggt_device: cuda                    # auto / cuda / cuda:0 / cpu
+    vggt_sample_fps: 4.0                 # VGGT 几何视图的均匀时间采样率；<=0 使用全部 mask 观测
+    vggt_max_frames: 48                  # 每个 clip 的 VGGT 视图上限；<=0 表示不限制
+    vggt_save_npz: null                  # 缓存原始 VGGT 输出的路径（depth/intrinsics/extrinsics/conf）
+    vggt_save_unprojected_point_map: null  # 反投影稠密点图诊断 .npy（音频处理不需要）
+    vggt_npz: null                       # 复用的 VGGT 预计算 .npz
+    vggt_intrinsics_space: depth         # depth / video，VGGT 内参所在像素坐标系
+    vggt_mask_erode_px: 1                # 在 VGGT 深度像素空间中对 mask 的腐蚀像素数
+    vggt_conf_keep_quantile: 0.25        # 丢弃置信度最低的 masked 深度像素比例
+
+# -----------------------------------------------------------------------------
+# 2) VGGT 全局尺度策略
+# -----------------------------------------------------------------------------
+vggt_scale:
+    # relative_only / median_anchor / scale_factor / hook
+    vggt_scale_mode: median_anchor
+    vggt_anchor_distance_m: 1.5          # median_anchor 模式下的中位声源距离
+    vggt_scale_factor_m_per_unit: null   # scale_factor 模式下的外部标定尺度
+
+# -----------------------------------------------------------------------------
+# 3) Legacy / Metric Depth 路径（消融或与 VGGT 对照时使用）
+# -----------------------------------------------------------------------------
+metric_depth:
+    use_depth: false
+    depth_provider: hook                 # hook / npy
+    depth_npy: null                      # [T] 或 [T,H,W] 的 metric depth numpy
+    depth_scale: 1.0
+    depth_type: axial                    # axial / range
+    depth_smooth_frames: 7
+    min_depth: 0.3
+    max_depth: 20.0
+    source_distance: 2.0
+
+# -----------------------------------------------------------------------------
+# 4) 相机内参（无 VGGT/外部内参时的 fallback）
+# -----------------------------------------------------------------------------
+camera_intrinsics:
+    hfov: 90.0
+    vfov: 60.0
+    fx: null
+    fy: null
+    cx: null
+    cy: null
+
+# -----------------------------------------------------------------------------
+# 5) 场景与 RIR 渲染
+# -----------------------------------------------------------------------------
+scene_rir:
+    receiver_origin: null                # 例如 [0.0, 0.0, 1.5]
+    room_size: [10.0, 10.0, 4.0]
+    out_of_room_policy: clip             # error / clip
+    rir_hz: 12.0
+    ear_height: 1.5
+    ear_distance: 0.17
+    t60: 0.25
+    mic_pattern: card                    # card / omni
+    max_rir_seconds: 0.15
+
+# -----------------------------------------------------------------------------
+# 6) RMS / 限幅保护（渲染后响度恢复）
+# -----------------------------------------------------------------------------
+rms_protection:
+    rms_clip_protection: linked_limiter  # linked_limiter / uniform_headroom / none
+    output_peak_ceiling: 0.98
+    rms_limiter_release_ms: 80.0
+    rms_limiter_iterations: 4
+
+# -----------------------------------------------------------------------------
+# 7) 输出控制
+# -----------------------------------------------------------------------------
+output:
+    trajectory_only: false
+    save_overlay: true
+
+
+hrir_sofa_path: /data/vjuicefs_ai_camera_jgroup_acadmic/public_data/11194554/WorkSpace/ProcessSpatialAudio/SpatialAudioGenerator/subject_003.sofa
+hrir_verify: auto
+
+hrir_reference_distance_m: 1.0
+hrir_min_distance_m: 0.25
+hrir_min_gain_db: -24.0
+hrir_max_gain_db: 12.0
+
+hrir_room_tail_db: -12.0
+hrir_room_tail_onset_ms: 20.0
+hrir_room_tail_fade_ms: 10.0
+hrir_sound_speed: 343.0
+hrir_print_itd_stats: true
+hrir_force_crossfade_fallback: false
