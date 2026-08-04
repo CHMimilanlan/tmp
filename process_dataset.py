@@ -14,7 +14,7 @@ Convention table:
     caption         → Text encoder → conditions/
 Legacy aliases: media_path → video, ref_media_path → reference_video
 Basic usage:
-    python scripts/process_dataset.py /path/to/dataset.json --resolution-buckets 768x768x49 \\
+    python scripts/process_dataset.py /path/to/dataset.json --resolution-buckets 768x768x49 \
         --model-path /path/to/ltx2.safetensors --text-encoder-path /path/to/gemma
 """
 
@@ -67,6 +67,7 @@ def preprocess_dataset(  # noqa: PLR0912, PLR0913, PLR0915
     remove_llm_prefixes: bool = False,
     reference_downscale_factor: int = 1,
     reference_temporal_scale_factor: int = 1,
+    skip_video: bool = False,
     skip_audio: bool = False,
     audio_durations: list[float] | None = None,
     load_text_encoder_in_8bit: bool = False,
@@ -92,18 +93,31 @@ def preprocess_dataset(  # noqa: PLR0912, PLR0913, PLR0915
             f"Expected 'caption', use --caption-column to specify, or pass --skip-caption to skip."
         )
 
-    # Validate: need video or audio
+    # Resolve which media roles exist and which video roles should be processed.
     has_video = "video" in roles
+    has_reference_video = "reference_video" in roles
     has_audio = "audio" in roles
-    if not has_video and not has_audio:
+    process_target_video = has_video and not skip_video
+    process_reference_video = has_reference_video
+
+    if not has_video and not has_reference_video and not has_audio:
         raise ValueError(
             f"No media column found. Dataset has columns: {dataset_columns}. "
-            f"Expected 'video', 'audio', or 'media_path' (legacy)."
+            "Expected 'video', 'reference_video', 'audio', "
+            "'media_path', or 'ref_media_path'."
         )
 
-    # Validate: video modes need resolution buckets
-    if has_video and not resolution_buckets:
-        raise ValueError("--resolution-buckets is required when the dataset has a video column.")
+    # Any video role that is actually processed needs resolution buckets.
+    if (process_target_video or process_reference_video) and not resolution_buckets:
+        raise ValueError(
+            "--resolution-buckets is required when processing video or reference_video."
+        )
+
+    if skip_video:
+        if has_video:
+            logger.info("Skipping target video VAE encoding because --skip-video is enabled")
+        else:
+            logger.info("--skip-video is enabled, but no target video column was detected")
 
     output_base = Path(output_dir) if output_dir else Path(dataset_file).parent / ".precomputed"
 
@@ -121,7 +135,13 @@ def preprocess_dataset(  # noqa: PLR0912, PLR0913, PLR0915
                 model_path=model_path,
                 text_encoder_path=text_encoder_path,
                 caption_column=roles["caption"],
-                media_column=roles.get("video") or roles.get("audio") or roles["caption"],
+                media_column=(
+                    roles.get("video")
+                    or roles.get("reference_video")
+                    or roles.get("audio")
+                    or roles.get("reference_audio")
+                    or roles["caption"]
+                ),
                 lora_trigger=lora_trigger,
                 remove_llm_prefixes=remove_llm_prefixes,
                 batch_size=batch_size,
@@ -130,9 +150,9 @@ def preprocess_dataset(  # noqa: PLR0912, PLR0913, PLR0915
                 overwrite=overwrite,
             )
 
-    # --- Phase 2: Video VAE (video, reference_video) ---
-    if has_video and resolution_buckets:
-        # Determine if audio should be auto-extracted from video files
+    # --- Phase 2a: Target Video VAE ---
+    if process_target_video and resolution_buckets:
+        # Determine if audio should be auto-extracted from target video files.
         auto_audio = not skip_audio and "audio" not in roles
 
         audio_latents_dir = str(output_base / "audio_latents") if auto_audio else None
@@ -154,43 +174,48 @@ def preprocess_dataset(  # noqa: PLR0912, PLR0913, PLR0915
                 overwrite=overwrite,
             )
 
-        # Process reference video if present
-        if "reference_video" in roles:
-            if reference_downscale_factor > 1 and len(resolution_buckets) > 1:
-                raise ValueError(
-                    "When using --reference-downscale-factor > 1, only a single resolution bucket is supported."
-                )
-            if reference_temporal_scale_factor > 1 and len(resolution_buckets) > 1:
-                raise ValueError(
-                    "When using --reference-temporal-scale-factor > 1, only a single resolution bucket is supported."
-                )
+    # --- Phase 2b: Reference Video VAE ---
+    # Reference video processing is independent of --skip-video.
+    if process_reference_video and resolution_buckets:
+        if reference_downscale_factor > 1 and len(resolution_buckets) > 1:
+            raise ValueError(
+                "When using --reference-downscale-factor > 1, only a single resolution bucket is supported."
+            )
+        if reference_temporal_scale_factor > 1 and len(resolution_buckets) > 1:
+            raise ValueError(
+                "When using --reference-temporal-scale-factor > 1, only a single resolution bucket is supported."
+            )
 
-            reference_buckets = compute_scaled_resolution_buckets(resolution_buckets, reference_downscale_factor)
-            if reference_downscale_factor > 1:
-                logger.info(f"Processing reference videos at 1/{reference_downscale_factor} resolution...")
-            if reference_temporal_scale_factor > 1:
-                logger.info(
-                    f"Temporally subsampling reference videos by {reference_temporal_scale_factor}x "
-                    f"(VAE-aligned pattern)..."
-                )
+        reference_buckets = compute_scaled_resolution_buckets(resolution_buckets, reference_downscale_factor)
+        if reference_downscale_factor > 1:
+            logger.info(f"Processing reference videos at 1/{reference_downscale_factor} resolution...")
+        if reference_temporal_scale_factor > 1:
+            logger.info(
+                f"Temporally subsampling reference videos by {reference_temporal_scale_factor}x "
+                f"(VAE-aligned pattern)..."
+            )
 
-            with free_gpu_memory_context():
-                compute_latents(
-                    dataset_file=dataset_file,
-                    main_media_column=roles["video"],
-                    video_column=roles["reference_video"],
-                    resolution_buckets=reference_buckets,
-                    output_dir=str(output_base / "reference_latents"),
-                    model_path=model_path,
-                    batch_size=batch_size,
-                    device=device,
-                    vae_tiling=vae_tiling,
-                    overwrite=overwrite,
-                    temporal_subsample_factor=reference_temporal_scale_factor,
-                )
+        # Preserve target-video-based sample names when the target column exists.
+        # For a reference-only dataset, use reference_video as its own naming key.
+        reference_main_media_column = roles.get("video") or roles["reference_video"]
 
-    # --- Phase 2b: Masks (video_mask, audio_mask) — processed after video latents for alignment ---
-    if "video_mask" in roles and has_video:
+        with free_gpu_memory_context():
+            compute_latents(
+                dataset_file=dataset_file,
+                main_media_column=reference_main_media_column,
+                video_column=roles["reference_video"],
+                resolution_buckets=reference_buckets,
+                output_dir=str(output_base / "reference_latents"),
+                model_path=model_path,
+                batch_size=batch_size,
+                device=device,
+                vae_tiling=vae_tiling,
+                overwrite=overwrite,
+                temporal_subsample_factor=reference_temporal_scale_factor,
+            )
+
+    # --- Phase 2c: Masks (video_mask, audio_mask) — processed after video latents for alignment ---
+    if "video_mask" in roles and process_target_video:
         compute_video_masks(
             dataset_file=dataset_file,
             mask_column=roles["video_mask"],
@@ -198,6 +223,8 @@ def preprocess_dataset(  # noqa: PLR0912, PLR0913, PLR0915
             output_dir=str(output_base / "video_masks"),
             main_media_column=roles["video"],
         )
+    elif "video_mask" in roles and skip_video:
+        logger.info("Skipping video_mask processing because target video encoding was skipped")
 
     # --- Phase 3: Audio VAE (audio, reference_audio) ---
     audio_roles_to_process = [
@@ -210,7 +237,7 @@ def preprocess_dataset(  # noqa: PLR0912, PLR0913, PLR0915
         # Determine audio duration constraint: video bucket → max_duration, or explicit buckets
         max_audio_duration = None
         audio_duration_buckets = None
-        if has_video and resolution_buckets:
+        if (has_video or has_reference_video) and resolution_buckets:
             max_audio_duration = max(f for f, _h, _w in resolution_buckets) / 24.0
         elif audio_durations:
             audio_duration_buckets = audio_durations
@@ -222,7 +249,7 @@ def preprocess_dataset(  # noqa: PLR0912, PLR0913, PLR0915
                     audio_column=roles[role],
                     output_dir=str(output_base / output_subdir),
                     model_path=model_path,
-                    main_media_column=roles.get("video"),
+                    main_media_column=roles.get("video") or roles.get("reference_video"),
                     max_duration=max_audio_duration,
                     duration_buckets=audio_duration_buckets,
                     device=device,
@@ -247,9 +274,9 @@ def preprocess_dataset(  # noqa: PLR0912, PLR0913, PLR0915
     if decode:
         logger.info("Decoding latents for verification...")
         decoder = LatentsDecoder(model_path=model_path, device=device, vae_tiling=vae_tiling, with_audio=has_audio)
-        if has_video:
+        if process_target_video and (output_base / "latents").exists():
             decoder.decode(output_base / "latents", output_base / "decoded_videos")
-        if "reference_video" in roles and (output_base / "reference_latents").exists():
+        if process_reference_video and (output_base / "reference_latents").exists():
             decoder.decode(output_base / "reference_latents", output_base / "decoded_reference_videos")
 
     # --- Summary ---
@@ -300,7 +327,7 @@ def main(  # noqa: PLR0913
     resolution_buckets: str | None = typer.Option(
         default=None,
         help='Resolution buckets in format "WxHxF;WxHxF;..." (e.g. "768x768x25"). '
-        "Required when dataset has a video column.",
+        "Required when processing a video or reference_video column.",
     ),
     model_path: str = typer.Option(
         ...,
@@ -345,6 +372,13 @@ def main(  # noqa: PLR0913
     remove_llm_prefixes: bool = typer.Option(
         default=False,
         help="Remove LLM prefixes from captions",
+    ),
+    skip_video: bool = typer.Option(
+        default=False,
+        help=(
+            "Skip target video VAE encoding. Reference videos are still processed "
+            "when a 'reference_video' column is present."
+        ),
     ),
     skip_audio: bool = typer.Option(
         default=False,
@@ -430,6 +464,7 @@ def main(  # noqa: PLR0913
         remove_llm_prefixes=remove_llm_prefixes,
         reference_downscale_factor=reference_downscale_factor,
         reference_temporal_scale_factor=reference_temporal_scale_factor,
+        skip_video=skip_video,
         skip_audio=skip_audio,
         audio_durations=parsed_audio_durations,
         load_text_encoder_in_8bit=load_text_encoder_in_8bit,
