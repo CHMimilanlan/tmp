@@ -5,7 +5,6 @@ import os
 import re
 from dataclasses import replace
 from pathlib import Path
-from typing import Any
 
 import torch
 from accelerate import DistributedType
@@ -13,9 +12,6 @@ from peft import LoraConfig, get_peft_model, get_peft_model_state_dict, set_peft
 from safetensors import safe_open
 from safetensors.torch import load_file, save_file
 from torch import Tensor
-from ltx_core.guidance.perturbations import (
-    BatchedPerturbationConfig, Perturbation, PerturbationConfig, PerturbationType,
-)
 from ltx_core.text_encoders.gemma import convert_to_additive_mask
 
 try:
@@ -160,7 +156,6 @@ class LtxvTrainer(_BaseTrainer):
 
     def _enable_audio_params(self) -> None:
         self._transformer.requires_grad_(False)
-        self._num_blocks = self._transformer.get_base_model().num_blocks
         for name, parameter in self._transformer.named_parameters():
             parameter.requires_grad_(self._is_audio_param(name))
         names = {self._key(n) for n, p in self._transformer.named_parameters() if p.requires_grad}
@@ -179,16 +174,6 @@ class LtxvTrainer(_BaseTrainer):
         self._setup_frozen_lora()
         self._enable_audio_params()
         self._trainable_params = [p for p in self._transformer.parameters() if p.requires_grad]
-
-    def _perturbations(self, inputs: Any) -> BatchedPerturbationConfig:
-        batch = inputs.audio.latent.shape[0]
-        configs = [
-            PerturbationConfig([Perturbation(PerturbationType.SKIP_A2V_CROSS_ATTN, None)])
-            for _ in range(batch)
-        ]
-        return BatchedPerturbationConfig(
-            configs, self._num_blocks, device=inputs.audio.latent.device, dtype=torch.bool
-        )
 
     def _training_step(self, batch: dict[str, dict[str, Tensor]]) -> TrainingStepOutput:
         if not self._is_audio_full():
@@ -212,7 +197,9 @@ class LtxvTrainer(_BaseTrainer):
         )
         inputs = self._training_strategy.prepare_training_inputs(batch, self._timestep_sampler)
         video_pred, audio_pred = self._transformer(
-            video=inputs.video, audio=inputs.audio, perturbations=self._perturbations(inputs)
+            video=inputs.video,
+            audio=inputs.audio,
+            perturbations=None,
         )
         if audio_pred is None or inputs.audio_targets is None:
             raise RuntimeError("Audio prediction/targets missing")
@@ -315,7 +302,7 @@ class LtxvTrainer(_BaseTrainer):
             global_step=str(self._global_step),
             frozen_ic_lora=self._frozen_lora_path().name,
             contains_frozen_ic_lora="false",
-            audio_to_video_cross_attention="disabled_during_training",
+            audio_to_video_cross_attention="enabled_during_training",
         )
         save_file({f"diffusion_model.{k}": v for k, v in state.items()}, path, metadata=metadata)
         self._checkpoint_paths.append(path)
