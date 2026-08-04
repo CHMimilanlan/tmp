@@ -90,7 +90,7 @@ class TrainingStepOutput:
 class LtxvTrainer:
     def __init__(self, trainer_config: LtxTrainerConfig) -> None:
         self._config = trainer_config
-        
+
         # ===============================
         self.use_track_prope = self._config.use_track_prope
         self.use_spatial_track_encoder = self._config.use_spatial_track_encoder
@@ -106,7 +106,7 @@ class LtxvTrainer:
         }
         self.summary_source_mode = self._config.summary_source_mode
         # ===============================
-        
+
         if IS_MAIN_PROCESS:
             print_config(trainer_config)
         self._training_strategy = get_training_strategy(self._config.training_strategy)
@@ -152,9 +152,9 @@ class LtxvTrainer:
         self._training_state_size_warned = False
         self._sigma_tracker = SigmaBucketTracker()
         self._wandb_run = None
-        
 
-        
+
+
     def train(  # noqa: PLR0912, PLR0915
         self,
         disable_progress_bars: bool = False,
@@ -251,7 +251,7 @@ class LtxvTrainer:
                     is_optimization_step = (step + 1) % cfg.optimization.gradient_accumulation_steps == 0
                     if is_optimization_step:
                         self._global_step += 1
-                        
+
                     output = self._training_step(batch)
                     self._accelerator.backward(output.loss.mean())
 
@@ -410,7 +410,7 @@ class LtxvTrainer:
         conditions["prompt_attention_mask"] = attention_mask
 
         # Use strategy to prepare training inputs (returns ModelInputs with Modality objects)
-        
+
         if self._transformer.get_base_model().spatial_track_encoder is None:
             model_inputs = self._training_strategy.prepare_training_inputs(batch, self._timestep_sampler)
         else:
@@ -448,173 +448,18 @@ class LtxvTrainer:
 
         # breakpoint()
         if self.use_track_prope:
-            initialized_blocks = 0
-            transformer_blocks = getattr(
-                self._transformer,
-                "transformer_blocks",
-                None,
-            )
-            if transformer_blocks is None:
-                raise RuntimeError(
-                    "Track-PRoPE is enabled, but the loaded transformer "
-                    "does not contain transformer_blocks."
-                )
+            self._initialize_track_prope()
 
-            for block_index, block in enumerate(transformer_blocks):
-                if not hasattr(block, "initialize_track_prope"):
-                    raise RuntimeError(
-                        f"Transformer block {block_index} does not implement "
-                        "initialize_track_prope(). Make sure the modified "
-                        "transformer.py is being imported."
-                    )
-                block.initialize_track_prope(
-                    device=torch.device("cpu"),
-                    dtype=torch.bfloat16,
-                    adapter_dim=512,
-                    num_heads=8,
-                    matrix_scale=0.5,
-                )
-                if block.audio_track_prope is not None:
-                    initialized_blocks += 1
-            logger.info(
-                "Track-PRoPE initialized in "
-                f"{initialized_blocks}/{len(transformer_blocks)} transformer blocks."
-            )
-
-        # ---------------------------------------------------------
-        # Optionally initialize Track-Summary modules.
-        #
-        # Like Track-PRoPE, the base transformer is created without the extra
-        # Track-Summary submodules so the checkpoint can be loaded cleanly.
-        # The modules are then created here by calling initialize_track_summary().
-        # ---------------------------------------------------------
-        # breakpoint()
         if self.use_ic_lora_summary:
-            initialized_summary_blocks = 0
-            transformer_blocks = getattr(
-                self._transformer,
-                "transformer_blocks",
-                None,
-            )
-            if transformer_blocks is None:
-                raise RuntimeError(
-                    "Track-Summary is enabled, but the loaded transformer "
-                    "does not contain transformer_blocks."
-                )
+            self._initialize_track_summary()
 
-            for block_index, block in enumerate(transformer_blocks):
-                if not hasattr(block, "initialize_track_summary"):
-                    raise RuntimeError(
-                        f"Transformer block {block_index} does not implement "
-                        "initialize_track_summary(). Make sure the modified "
-                        "transformer.py is being imported."
-                    )
-                block.initialize_track_summary(
-                    device=torch.device("cpu"),
-                    dtype=torch.bfloat16,
-                )
-                # 指定 Summary Tokens 的来源模式。
-                # 可选值：track_xy / reference_tokens /
-                #         reference_guided_target / hybrid
-                
-                block.set_summary_source_mode(self.summary_source_mode)
-                if block.ic_lora_summarizer is not None:
-                    initialized_summary_blocks += 1
-            logger.info(
-                "Track-Summary initialized in "
-                f"{initialized_summary_blocks}/{len(transformer_blocks)} "
-                "transformer blocks."
-            )
-            logger.info(
-                f"Track-Summary source mode is set to {self.summary_source_mode}"
-            )
-
-        # ---------------------------------------------------------
-        # Optionally initialize Simple-Summary modules.
-        #
-        # Like Track-PRoPE and Track-Summary, the base transformer is created
-        # without the extra Simple-Summary submodules so the checkpoint can be
-        # loaded cleanly. The modules are then created here by calling
-        # initialize_simple_summary().
-        # ---------------------------------------------------------
         if self.use_simple_summary:
-            initialized_simple_summary_blocks = 0
-            transformer_blocks = getattr(
-                self._transformer,
-                "transformer_blocks",
-                None,
-            )
-            if transformer_blocks is None:
-                raise RuntimeError(
-                    "Simple-Summary is enabled, but the loaded transformer "
-                    "does not contain transformer_blocks."
-                )
+            self._initialize_simple_summary()
 
-            for block_index, block in enumerate(transformer_blocks):
-                if not hasattr(block, "initialize_simple_summary"):
-                    raise RuntimeError(
-                        f"Transformer block {block_index} does not implement "
-                        "initialize_simple_summary(). Make sure the modified "
-                        "transformer.py is being imported."
-                    )
-                block.initialize_simple_summary(
-                    device=torch.device("cpu"),
-                    dtype=torch.bfloat16,
-                )
-                if block.simple_summary is not None:
-                    initialized_simple_summary_blocks += 1
-            logger.info(
-                "Simple-Summary initialized in "
-                f"{initialized_simple_summary_blocks}/{len(transformer_blocks)} "
-                "transformer blocks."
-            )
-
-        # ---------------------------------------------------------
-        # Optionally initialize SpatialTrackEncoder
-        # ---------------------------------------------------------
         if self.use_spatial_track_encoder:
-            spatial_cfg = SpatialTrackEncoderConfig(
-                dim=128,
-                video_t=16,
-                video_h=6,
-                video_w=10,
-                audio_t=126,
-                num_heads=8,
-                dropout=0.0,
-                encoder_depth=4,
-                decoder_depth=2,
-            )
-
-            self._transformer.initialize_spatial_track_modules(
-                # encoder_type="audio_query",
-                encoder_type="simple",
-                cfg=spatial_cfg,
-                device=torch.device("cpu"),
-                dtype=torch.bfloat16,
-            )
-
-            if self._transformer.spatial_track_encoder is None:
-                raise RuntimeError(
-                    "use_spatial_track_encoder=true, but "
-                    "SpatialTrackEncoder initialization failed."
-                )
-
-            logger.info(
-                "SpatialTrackEncoder is enabled and has been initialized."
-            )
-
+            self._initialize_spatial_track_encoder()
         else:
-            # initialize_spatial_track_modules() is intentionally not called.
-            #
-            # Normally the transformer constructor should already initialize
-            # this attribute as None. This assignment ensures that all later
-            # branches consistently recognize the disabled state.
-            self._transformer.spatial_track_encoder = None
-
-            logger.info(
-                "SpatialTrackEncoder is disabled; "
-                "using the original LTX-2.3 training input pipeline."
-            )
+            self._disable_spatial_track_encoder()
 
         # ---------------------------------------------------------
         # Load embeddings processor
@@ -667,7 +512,181 @@ class LtxvTrainer:
         # Freeze the complete transformer first.
         # LoRA and SpatialTrackEncoder are selectively enabled later.
         self._transformer.requires_grad_(False)
-    
+
+    def _initialize_track_prope(self) -> None:
+        """Initialize the optional Track-PRoPE modules."""
+        initialized_blocks = 0
+        transformer_blocks = getattr(
+            self._transformer,
+            "transformer_blocks",
+            None,
+        )
+        if transformer_blocks is None:
+            raise RuntimeError(
+                "Track-PRoPE is enabled, but the loaded transformer "
+                "does not contain transformer_blocks."
+            )
+
+        for block_index, block in enumerate(transformer_blocks):
+            if not hasattr(block, "initialize_track_prope"):
+                raise RuntimeError(
+                    f"Transformer block {block_index} does not implement "
+                    "initialize_track_prope(). Make sure the modified "
+                    "transformer.py is being imported."
+                )
+            block.initialize_track_prope(
+                device=torch.device("cpu"),
+                dtype=torch.bfloat16,
+                adapter_dim=512,
+                num_heads=8,
+                matrix_scale=0.5,
+            )
+            if block.audio_track_prope is not None:
+                initialized_blocks += 1
+        logger.info(
+            "Track-PRoPE initialized in "
+            f"{initialized_blocks}/{len(transformer_blocks)} transformer blocks."
+        )
+
+    def _initialize_track_summary(self) -> None:
+        """Initialize the optional IC-LoRA Track-Summary modules."""
+        # ---------------------------------------------------------
+        # Optionally initialize Track-Summary modules.
+        #
+        # Like Track-PRoPE, the base transformer is created without the extra
+        # Track-Summary submodules so the checkpoint can be loaded cleanly.
+        # The modules are then created here by calling initialize_track_summary().
+        # ---------------------------------------------------------
+        # breakpoint()
+        initialized_summary_blocks = 0
+        transformer_blocks = getattr(
+            self._transformer,
+            "transformer_blocks",
+            None,
+        )
+        if transformer_blocks is None:
+            raise RuntimeError(
+                "Track-Summary is enabled, but the loaded transformer "
+                "does not contain transformer_blocks."
+            )
+
+        for block_index, block in enumerate(transformer_blocks):
+            if not hasattr(block, "initialize_track_summary"):
+                raise RuntimeError(
+                    f"Transformer block {block_index} does not implement "
+                    "initialize_track_summary(). Make sure the modified "
+                    "transformer.py is being imported."
+                )
+            block.initialize_track_summary(
+                device=torch.device("cpu"),
+                dtype=torch.bfloat16,
+            )
+            # 指定 Summary Tokens 的来源模式。
+            # 可选值：track_xy / reference_tokens /
+            #         reference_guided_target / hybrid
+
+            block.set_summary_source_mode(self.summary_source_mode)
+            if block.ic_lora_summarizer is not None:
+                initialized_summary_blocks += 1
+        logger.info(
+            "Track-Summary initialized in "
+            f"{initialized_summary_blocks}/{len(transformer_blocks)} "
+            "transformer blocks."
+        )
+        logger.info(
+            f"Track-Summary source mode is set to {self.summary_source_mode}"
+        )
+
+    def _initialize_simple_summary(self) -> None:
+        """Initialize the optional Simple-Summary modules."""
+        # ---------------------------------------------------------
+        # Optionally initialize Simple-Summary modules.
+        #
+        # Like Track-PRoPE and Track-Summary, the base transformer is created
+        # without the extra Simple-Summary submodules so the checkpoint can be
+        # loaded cleanly. The modules are then created here by calling
+        # initialize_simple_summary().
+        # ---------------------------------------------------------
+        initialized_simple_summary_blocks = 0
+        transformer_blocks = getattr(
+            self._transformer,
+            "transformer_blocks",
+            None,
+        )
+        if transformer_blocks is None:
+            raise RuntimeError(
+                "Simple-Summary is enabled, but the loaded transformer "
+                "does not contain transformer_blocks."
+            )
+
+        for block_index, block in enumerate(transformer_blocks):
+            if not hasattr(block, "initialize_simple_summary"):
+                raise RuntimeError(
+                    f"Transformer block {block_index} does not implement "
+                    "initialize_simple_summary(). Make sure the modified "
+                    "transformer.py is being imported."
+                )
+            block.initialize_simple_summary(
+                device=torch.device("cpu"),
+                dtype=torch.bfloat16,
+            )
+            if block.simple_summary is not None:
+                initialized_simple_summary_blocks += 1
+        logger.info(
+            "Simple-Summary initialized in "
+            f"{initialized_simple_summary_blocks}/{len(transformer_blocks)} "
+            "transformer blocks."
+        )
+
+    def _initialize_spatial_track_encoder(self) -> None:
+        """Initialize and validate the optional spatial track encoder."""
+        # ---------------------------------------------------------
+        # Optionally initialize SpatialTrackEncoder
+        # ---------------------------------------------------------
+        spatial_cfg = SpatialTrackEncoderConfig(
+            dim=128,
+            video_t=16,
+            video_h=6,
+            video_w=10,
+            audio_t=126,
+            num_heads=8,
+            dropout=0.0,
+            encoder_depth=4,
+            decoder_depth=2,
+        )
+
+        self._transformer.initialize_spatial_track_modules(
+            # encoder_type="audio_query",
+            encoder_type="simple",
+            cfg=spatial_cfg,
+            device=torch.device("cpu"),
+            dtype=torch.bfloat16,
+        )
+
+        if self._transformer.spatial_track_encoder is None:
+            raise RuntimeError(
+                "use_spatial_track_encoder=true, but "
+                "SpatialTrackEncoder initialization failed."
+            )
+
+        logger.info(
+            "SpatialTrackEncoder is enabled and has been initialized."
+        )
+
+    def _disable_spatial_track_encoder(self) -> None:
+        """Keep the original training pipeline when the encoder is disabled."""
+        # initialize_spatial_track_modules() is intentionally not called.
+        #
+        # Normally the transformer constructor should already initialize
+        # this attribute as None. This assignment ensures that all later
+        # branches consistently recognize the disabled state.
+        self._transformer.spatial_track_encoder = None
+
+        logger.info(
+            "SpatialTrackEncoder is disabled; "
+            "using the original LTX-2.3 training input pipeline."
+        )
+
 
     def _collect_trainable_params(self) -> None:
         """Collect trainable parameters based on training mode."""
@@ -693,7 +712,7 @@ class LtxvTrainer:
             raise ValueError(
                 "LoRA configuration is required in LoRA training mode."
             )
-    
+
         has_spatial_track_encoder = (
             getattr(
                 self._transformer,
@@ -702,7 +721,7 @@ class LtxvTrainer:
             )
             is not None
         )
-    
+
         # 不使用 modules_to_save
         lora_config = LoraConfig(
             r=self._config.lora.rank,
@@ -711,97 +730,81 @@ class LtxvTrainer:
             lora_dropout=self._config.lora.dropout,
             init_lora_weights=True,
         )
-    
+
         self._transformer = get_peft_model(
             self._transformer,
             lora_config,
         )
-    
+
         base_model = self._transformer.get_base_model()
-    
+
         # ---------------------------------------------------------
         # Enable Track-PRoPE training
         # ---------------------------------------------------------
         if self.use_track_prope:
-            track_prope_module_count = 0
-            track_prope_trainable_params = 0
-
-            for block_index, block in enumerate(
-                base_model.transformer_blocks
-            ):
-                track_prope = getattr(
-                    block,
-                    "audio_track_prope",
-                    None,
-                )
-
-                if track_prope is None:
-                    raise RuntimeError(
-                        f"use_track_prope=true, but transformer block "
-                        f"{block_index} has no audio_track_prope module."
-                    )
-
-                # 只启用 Track-PRoPE，不启用整个 Transformer Block
-                track_prope.requires_grad_(True)
-
-                module_trainable_params = sum(
-                    parameter.numel()
-                    for parameter in track_prope.parameters()
-                    if parameter.requires_grad
-                )
-
-                if module_trainable_params == 0:
-                    raise RuntimeError(
-                        f"Track-PRoPE in transformer block "
-                        f"{block_index} has no trainable parameters."
-                    )
-
-                track_prope_module_count += 1
-                track_prope_trainable_params += (
-                    module_trainable_params
-                )
-
-            # 后面保存时可以用来检查是否漏掉 Block
-            self._track_prope_module_count = (
-                track_prope_module_count
-            )
-
-            logger.info(
-                "Trainable Track-PRoPE modules: "
-                f"{track_prope_module_count}; "
-                "trainable parameters: "
-                f"{track_prope_trainable_params:,}"
-            )
+            self._enable_track_prope_training(base_model)
         else:
             self._track_prope_module_count = 0
-    
-    
+
+
         if has_spatial_track_encoder:
-            spatial_track_encoder = base_model.spatial_track_encoder
-    
-            # 此时它应当还是原始 SpatialTrackEncoder，
-            # 而不是 ModulesToSaveWrapper。
-            if isinstance(
-                spatial_track_encoder,
-                ModulesToSaveWrapper,
-            ):
+            self._enable_spatial_track_encoder_training(base_model)
+
+    def _enable_track_prope_training(self, base_model: Any) -> None:
+        """Make only the Track-PRoPE modules trainable."""
+        track_prope_module_count = 0
+        track_prope_trainable_params = 0
+
+        for block_index, block in enumerate(base_model.transformer_blocks):
+            track_prope = getattr(block, "audio_track_prope", None)
+            if track_prope is None:
                 raise RuntimeError(
-                    "SpatialTrackEncoder should not be wrapped by "
-                    "ModulesToSaveWrapper."
+                    f"use_track_prope=true, but transformer block "
+                    f"{block_index} has no audio_track_prope module."
                 )
-    
-            spatial_track_encoder.requires_grad_(True)
-    
-            trainable_params = sum(
-                p.numel()
-                for p in spatial_track_encoder.parameters()
-                if p.requires_grad
+
+            track_prope.requires_grad_(True)
+            module_trainable_params = sum(
+                parameter.numel()
+                for parameter in track_prope.parameters()
+                if parameter.requires_grad
             )
-    
-            logger.info(
-                "Trainable SpatialTrackEncoder params: "
-                f"{trainable_params:,}"
-            )            
+            if module_trainable_params == 0:
+                raise RuntimeError(
+                    f"Track-PRoPE in transformer block "
+                    f"{block_index} has no trainable parameters."
+                )
+
+            track_prope_module_count += 1
+            track_prope_trainable_params += module_trainable_params
+
+        self._track_prope_module_count = track_prope_module_count
+        logger.info(
+            "Trainable Track-PRoPE modules: "
+            f"{track_prope_module_count}; trainable parameters: "
+            f"{track_prope_trainable_params:,}"
+        )
+
+    @staticmethod
+    def _enable_spatial_track_encoder_training(base_model: Any) -> None:
+        """Make the unwrapped SpatialTrackEncoder trainable."""
+        spatial_track_encoder = base_model.spatial_track_encoder
+        if isinstance(spatial_track_encoder, ModulesToSaveWrapper):
+            raise RuntimeError(
+                "SpatialTrackEncoder should not be wrapped by "
+                "ModulesToSaveWrapper."
+            )
+
+        spatial_track_encoder.requires_grad_(True)
+        trainable_params = sum(
+            parameter.numel()
+            for parameter in spatial_track_encoder.parameters()
+            if parameter.requires_grad
+        )
+        logger.info(
+            "Trainable SpatialTrackEncoder params: "
+            f"{trainable_params:,}"
+        )
 
     def _load_checkpoint(self) -> None:
         """Load checkpoint if specified in config, then resolve resume state."""
@@ -1299,7 +1302,7 @@ class LtxvTrainer:
         self._dataloader = self._accelerator.prepare(
             dataloader
         )
-    
+
     def _init_lora_weights(self) -> None:
         """Initialize LoRA weights for the transformer."""
         logger.debug("Initializing LoRA weights...")
@@ -1541,6 +1544,210 @@ class LtxvTrainer:
         logger.info(stats_str)
 
 
+    def _save_spatial_track_encoder_checkpoint(
+        self,
+        spatial_state_dict: dict[str, Tensor],
+        spatial_path: Path,
+        full_state_dict: dict[str, Tensor],
+    ) -> None:
+        """Validate and save the SpatialTrackEncoder checkpoint state."""
+        if not spatial_state_dict:
+            spatial_keys = [
+                key
+                for key in full_state_dict
+                if "spatial" in key.lower()
+                or "track" in key.lower()
+            ]
+
+            raise RuntimeError(
+                "SpatialTrackEncoder is enabled, but no encoder "
+                "weights were found in full_state_dict.\n"
+                f"Possible keys: {spatial_keys[:30]}"
+            )
+
+        save_file(
+            spatial_state_dict,
+            spatial_path,
+        )
+
+    def _save_track_prope_checkpoint(
+        self,
+        track_prope_state_dict: dict[str, Tensor],
+        track_prope_path: Path,
+        full_state_dict: dict[str, Tensor],
+    ) -> None:
+        """Validate and save the Track-PRoPE checkpoint state."""
+        if not track_prope_state_dict:
+            possible_keys = [
+                key
+                for key in full_state_dict
+                if "track" in key.lower()
+                or "prope" in key.lower()
+            ]
+
+            raise RuntimeError(
+                "use_track_prope=true, but no Track-PRoPE "
+                "weights were found in full_state_dict.\n"
+                f"Possible related keys: {possible_keys[:50]}"
+            )
+
+        # 检查保存结果覆盖了多少个 Transformer Block
+        saved_block_indices: set[int] = set()
+
+        for key in track_prope_state_dict:
+            match = re.match(
+                r"transformer_blocks\.(\d+)"
+                r"\.audio_track_prope\.",
+                key,
+            )
+
+            if match is None:
+                raise RuntimeError(
+                    "Invalid normalized Track-PRoPE key: "
+                    f"{key}"
+                )
+
+            saved_block_indices.add(
+                int(match.group(1))
+            )
+
+        expected_module_count = getattr(
+            self,
+            "_track_prope_module_count",
+            0,
+        )
+
+        if (
+            expected_module_count > 0
+            and len(saved_block_indices)
+            != expected_module_count
+        ):
+            raise RuntimeError(
+                "Not all Track-PRoPE modules were found in "
+                "full_state_dict.\n"
+                f"Expected modules: {expected_module_count}\n"
+                f"Saved modules: {len(saved_block_indices)}\n"
+                f"Saved block indices: "
+                f"{sorted(saved_block_indices)}"
+            )
+
+        save_file(
+            track_prope_state_dict,
+            str(track_prope_path),
+            metadata={
+                "format": "ltx-track-prope",
+                "global_step": str(self._global_step),
+                "module_count": str(
+                    len(saved_block_indices)
+                ),
+            },
+        )
+
+    def _save_track_summary_checkpoint(
+        self,
+        track_summary_state_dict: dict[str, Tensor],
+        track_summary_path: Path,
+        full_state_dict: dict[str, Tensor],
+    ) -> None:
+        """Validate and save the Track-Summary checkpoint state."""
+        if not track_summary_state_dict:
+            possible_keys = [
+                key
+                for key in full_state_dict
+                if "summary" in key.lower()
+            ]
+
+            raise RuntimeError(
+                "use_ic_lora_summary=true, but no Track-Summary "
+                "weights were found in full_state_dict.\n"
+                f"Possible related keys: {possible_keys[:50]}"
+            )
+
+        # 检查保存结果覆盖了多少个 Transformer Block
+        saved_summary_block_indices: set[int] = set()
+
+        for key in track_summary_state_dict:
+            match = re.match(
+                r"transformer_blocks\.(\d+)\.",
+                key,
+            )
+
+            if match is None:
+                raise RuntimeError(
+                    "Invalid normalized Track-Summary key: "
+                    f"{key}"
+                )
+
+            saved_summary_block_indices.add(
+                int(match.group(1))
+            )
+
+        save_file(
+            track_summary_state_dict,
+            str(track_summary_path),
+            metadata={
+                "format": "ltx-track-summary",
+                "global_step": str(self._global_step),
+                "module_count": str(
+                    len(saved_summary_block_indices)
+                ),
+                "use_audio_summary": str(
+                    getattr(self, "use_audio_summary", False)
+                ),
+            },
+        )
+
+    def _save_simple_summary_checkpoint(
+        self,
+        simple_summary_state_dict: dict[str, Tensor],
+        simple_summary_path: Path,
+        full_state_dict: dict[str, Tensor],
+    ) -> None:
+        """Validate and save the Simple-Summary checkpoint state."""
+        if not simple_summary_state_dict:
+            possible_keys = [
+                key
+                for key in full_state_dict
+                if "summary" in key.lower()
+            ]
+
+            raise RuntimeError(
+                "use_simple_summary=true, but no Simple-Summary "
+                "weights were found in full_state_dict.\n"
+                f"Possible related keys: {possible_keys[:50]}"
+            )
+
+        # 检查保存结果覆盖了多少个 Transformer Block
+        saved_simple_summary_block_indices: set[int] = set()
+
+        for key in simple_summary_state_dict:
+            match = re.match(
+                r"transformer_blocks\.(\d+)\.",
+                key,
+            )
+
+            if match is None:
+                raise RuntimeError(
+                    "Invalid normalized Simple-Summary key: "
+                    f"{key}"
+                )
+
+            saved_simple_summary_block_indices.add(
+                int(match.group(1))
+            )
+
+        save_file(
+            simple_summary_state_dict,
+            str(simple_summary_path),
+            metadata={
+                "format": "ltx-simple-summary",
+                "global_step": str(self._global_step),
+                "module_count": str(
+                    len(saved_simple_summary_block_indices)
+                ),
+            },
+        )
+
     def _save_checkpoint(self) -> Path | None:
         is_lora = (
             self._config.model.training_mode == "lora"
@@ -1549,22 +1756,22 @@ class LtxvTrainer:
             self._accelerator.distributed_type
             == DistributedType.FSDP
         )
-    
+
         save_dir = (
             Path(self._config.output_dir)
             / "checkpoints"
         )
-    
+
         lora_path = (
             save_dir
             / f"lora_weights_step_{self._global_step:05d}.safetensors"
         )
-    
+
         spatial_path = (
             save_dir
             / f"spatial_track_encoder_step_{self._global_step:05d}.safetensors"
         )
-        
+
         track_prope_path = (
             save_dir
             / f"track_prope_step_{self._global_step:05d}.safetensors"
@@ -1579,39 +1786,39 @@ class LtxvTrainer:
             save_dir
             / f"simple_summary_step_{self._global_step:05d}.safetensors"
         )
-    
+
         # 所有 rank 共同参加唯一一次 state-dict collective
         self._accelerator.wait_for_everyone()
-    
+
         full_state_dict = self._accelerator.get_state_dict(
             self._transformer
         )
-    
+
         if not self._accelerator.is_main_process:
             return None
-    
+
         save_dir.mkdir(
             exist_ok=True,
             parents=True,
         )
-    
+
         save_dtype = (
             torch.bfloat16
             if self._config.checkpoints.precision == "bfloat16"
             else torch.float32
         )
-    
+
         # 现在没有 ModulesToSaveWrapper，因此这一步只筛选 LoRA
         unwrapped = self._accelerator.unwrap_model(
             self._transformer,
             keep_torch_compile=False,
         )
-    
+
         lora_state_dict = get_peft_model_state_dict(
             unwrapped,
             state_dict=full_state_dict if is_fsdp else None,
         )
-    
+
         lora_state_dict = {
             key.replace(
                 "base_model.model.",
@@ -1620,7 +1827,7 @@ class LtxvTrainer:
             ): value
             for key, value in lora_state_dict.items()
         }
-    
+
         lora_state_dict = {
             f"diffusion_model.{key}": (
                 value.detach()
@@ -1632,28 +1839,28 @@ class LtxvTrainer:
             )
             for key, value in lora_state_dict.items()
         }
-    
+
         save_file(
             lora_state_dict,
             lora_path,
             metadata=self._build_checkpoint_metadata(),
         )
-    
+
         # 只从已经收集完成的 full_state_dict 中筛选，
         # 不再调用 spatial_track_encoder.state_dict()
         spatial_state_dict = {}
-    
+
         marker = "spatial_track_encoder."
-    
+
         for key, value in full_state_dict.items():
             if marker not in key:
                 continue
-    
+
             relative_key = key.split(
                 marker,
                 1,
             )[1]
-    
+
             spatial_state_dict[relative_key] = (
                 value.detach()
                 .to(
@@ -1662,28 +1869,15 @@ class LtxvTrainer:
                 )
                 .contiguous()
             )
-    
+
         if self.use_spatial_track_encoder:
-            if not spatial_state_dict:
-                spatial_keys = [
-                    key
-                    for key in full_state_dict
-                    if "spatial" in key.lower()
-                    or "track" in key.lower()
-                ]
-    
-                raise RuntimeError(
-                    "SpatialTrackEncoder is enabled, but no encoder "
-                    "weights were found in full_state_dict.\n"
-                    f"Possible keys: {spatial_keys[:30]}"
-                )
-    
-            save_file(
+            self._save_spatial_track_encoder_checkpoint(
                 spatial_state_dict,
                 spatial_path,
+                full_state_dict,
             )
-    
-    
+
+
         # ---------------------------------------------------------
         # Extract Track-PRoPE from the already gathered state dict
         #
@@ -1738,71 +1932,7 @@ class LtxvTrainer:
             )
 
         if self.use_track_prope:
-            if not track_prope_state_dict:
-                possible_keys = [
-                    key
-                    for key in full_state_dict
-                    if "track" in key.lower()
-                    or "prope" in key.lower()
-                ]
-
-                raise RuntimeError(
-                    "use_track_prope=true, but no Track-PRoPE "
-                    "weights were found in full_state_dict.\n"
-                    f"Possible related keys: {possible_keys[:50]}"
-                )
-
-            # 检查保存结果覆盖了多少个 Transformer Block
-            saved_block_indices: set[int] = set()
-
-            for key in track_prope_state_dict:
-                match = re.match(
-                    r"transformer_blocks\.(\d+)"
-                    r"\.audio_track_prope\.",
-                    key,
-                )
-
-                if match is None:
-                    raise RuntimeError(
-                        "Invalid normalized Track-PRoPE key: "
-                        f"{key}"
-                    )
-
-                saved_block_indices.add(
-                    int(match.group(1))
-                )
-
-            expected_module_count = getattr(
-                self,
-                "_track_prope_module_count",
-                0,
-            )
-
-            if (
-                expected_module_count > 0
-                and len(saved_block_indices)
-                != expected_module_count
-            ):
-                raise RuntimeError(
-                    "Not all Track-PRoPE modules were found in "
-                    "full_state_dict.\n"
-                    f"Expected modules: {expected_module_count}\n"
-                    f"Saved modules: {len(saved_block_indices)}\n"
-                    f"Saved block indices: "
-                    f"{sorted(saved_block_indices)}"
-                )
-
-            save_file(
-                track_prope_state_dict,
-                str(track_prope_path),
-                metadata={
-                    "format": "ltx-track-prope",
-                    "global_step": str(self._global_step),
-                    "module_count": str(
-                        len(saved_block_indices)
-                    ),
-                },
-            )
+            self._save_track_prope_checkpoint(track_prope_state_dict, track_prope_path, full_state_dict)
 
         # ---------------------------------------------------------
         # Extract Track-Summary modules from the already gathered state dict
@@ -1867,52 +1997,7 @@ class LtxvTrainer:
             )
 
         if self.use_ic_lora_summary:
-            if not track_summary_state_dict:
-                possible_keys = [
-                    key
-                    for key in full_state_dict
-                    if "summary" in key.lower()
-                ]
-
-                raise RuntimeError(
-                    "use_ic_lora_summary=true, but no Track-Summary "
-                    "weights were found in full_state_dict.\n"
-                    f"Possible related keys: {possible_keys[:50]}"
-                )
-
-            # 检查保存结果覆盖了多少个 Transformer Block
-            saved_summary_block_indices: set[int] = set()
-
-            for key in track_summary_state_dict:
-                match = re.match(
-                    r"transformer_blocks\.(\d+)\.",
-                    key,
-                )
-
-                if match is None:
-                    raise RuntimeError(
-                        "Invalid normalized Track-Summary key: "
-                        f"{key}"
-                    )
-
-                saved_summary_block_indices.add(
-                    int(match.group(1))
-                )
-
-            save_file(
-                track_summary_state_dict,
-                str(track_summary_path),
-                metadata={
-                    "format": "ltx-track-summary",
-                    "global_step": str(self._global_step),
-                    "module_count": str(
-                        len(saved_summary_block_indices)
-                    ),
-                    "use_audio_summary": str(
-                        getattr(self, "use_audio_summary", False)
-                    ),
-                },
-            )
+            self._save_track_summary_checkpoint(track_summary_state_dict, track_summary_path, full_state_dict)
 
         # ---------------------------------------------------------
         # Extract Simple-Summary modules from the already gathered state dict
@@ -1973,54 +2058,12 @@ class LtxvTrainer:
             )
 
         if self.use_simple_summary:
-            if not simple_summary_state_dict:
-                possible_keys = [
-                    key
-                    for key in full_state_dict
-                    if "summary" in key.lower()
-                ]
+            self._save_simple_summary_checkpoint(simple_summary_state_dict, simple_summary_path, full_state_dict)
 
-                raise RuntimeError(
-                    "use_simple_summary=true, but no Simple-Summary "
-                    "weights were found in full_state_dict.\n"
-                    f"Possible related keys: {possible_keys[:50]}"
-                )
-
-            # 检查保存结果覆盖了多少个 Transformer Block
-            saved_simple_summary_block_indices: set[int] = set()
-
-            for key in simple_summary_state_dict:
-                match = re.match(
-                    r"transformer_blocks\.(\d+)\.",
-                    key,
-                )
-
-                if match is None:
-                    raise RuntimeError(
-                        "Invalid normalized Simple-Summary key: "
-                        f"{key}"
-                    )
-
-                saved_simple_summary_block_indices.add(
-                    int(match.group(1))
-                )
-
-            save_file(
-                simple_summary_state_dict,
-                str(simple_summary_path),
-                metadata={
-                    "format": "ltx-simple-summary",
-                    "global_step": str(self._global_step),
-                    "module_count": str(
-                        len(saved_simple_summary_block_indices)
-                    ),
-                },
-            )
-    
         logger.info(
             f"LoRA saved to {lora_path}"
         )
-    
+
         if spatial_state_dict:
             logger.info(
                 "SpatialTrackEncoder saved to "
@@ -2046,10 +2089,10 @@ class LtxvTrainer:
             )
 
         self._save_training_state(save_dir)
-    
+
         return lora_path
 
-    
+
     def _cleanup_checkpoints(self) -> None:
         """Clean up old checkpoints."""
         if 0 < self._config.checkpoints.keep_last_n < len(self._checkpoint_paths):
@@ -2517,10 +2560,10 @@ class LtxvTrainer:
                 )
 
             raise RuntimeError("\n".join(lines))
-        
-        
-        
-        
+
+
+
+
 
 
 
