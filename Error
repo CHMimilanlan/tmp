@@ -1,0 +1,324 @@
+DEBUG    [rank 0] Loading transformer...                                                                                                     trainer_vanilla_base.py:397
+INFO     [rank 0] Building transformer with attention backends -- self: SDPA[CUDNN_ATTENTION>FLASH_ATTENTION>EFFICIENT_ATTENTION>MATH], masked:              model.py:86
+         SDPA[CUDNN_ATTENTION>FLASH_ATTENTION>EFFICIENT_ATTENTION>MATH]                                                                                                 
+DEBUG    [rank 0] Loading embeddings processor...                                                                                            trainer_vanilla_base.py:409
+WARNING  [rank 0] [RANK 0] Detected kernel version 5.4.250, which is below the recommended minimum of 5.5.0; this can cause the process to hang. It is      other.py:520
+         recommended to upgrade the kernel to the minimum version or higher.                                                                                            
+INFO     [rank 0] FSDP distributed training enabled with 8 processes                                                                         trainer_vanilla_base.py:776
+INFO     [rank 0] Local batch size: 1, global batch size: 8                                                                                  trainer_vanilla_base.py:783
+INFO     [rank 0] Loaded and froze Motion Track IC-LoRA:                                                                                       trainer_audio_full.py:132
+         /data/vjuicefs_ai_camera_jgroup_video/public_data/Pretrained_models/VideoAudioModels/LTX-2.3-22b-IC-LoRA-Motion-Track-Control/ltx-2.3                          
+         -22b-ic-lora-motion-track-control-ref0.5.safetensors                                                                                                           
+INFO     [rank 0] Audio-full trainable params: 4,529,023,616                                                                                   trainer_audio_full.py:164
+[rank5]: Traceback (most recent call last):
+[rank5]:   File "/data/vjuicefs_ai_camera_jgroup_acadmic/public_data/11194554/WorkSpace/LTX-2/packages/ltx-trainer/scripts/train.py", line 64, in <module>
+[rank5]:     app()
+[rank5]:   File "/root/miniconda3/envs/ltx/lib/python3.10/site-packages/typer/main.py", line 1152, in __call__
+[rank5]:     raise e
+[rank5]:   File "/root/miniconda3/envs/ltx/lib/python3.10/site-packages/typer/main.py", line 1135, in __call__
+[rank5]:     return get_command(self)(*args, **kwargs)
+[rank5]:   File "/root/miniconda3/envs/ltx/lib/python3.10/site-packages/click/core.py", line 1524, in __call__
+[rank5]:     return self.main(*args, **kwargs)
+[rank5]:   File "/root/miniconda3/envs/ltx/lib/python3.10/site-packages/typer/core.py", line 708, in main
+[rank5]:     return _main(
+[rank5]:   File "/root/miniconda3/envs/ltx/lib/python3.10/site-packages/typer/core.py", line 188, in _main
+[rank5]:     rv = self.invoke(ctx)
+[rank5]:   File "/root/miniconda3/envs/ltx/lib/python3.10/site-packages/click/core.py", line 1308, in invoke
+[rank5]:     return ctx.invoke(self.callback, **ctx.params)
+[rank5]:   File "/root/miniconda3/envs/ltx/lib/python3.10/site-packages/click/core.py", line 877, in invoke
+[rank5]:     return callback(*args, **kwargs)
+[rank5]:   File "/root/miniconda3/envs/ltx/lib/python3.10/site-packages/typer/main.py", line 1514, in wrapper
+[rank5]:     return callback(**use_params)
+[rank5]:   File "/data/vjuicefs_ai_camera_jgroup_acadmic/public_data/11194554/WorkSpace/LTX-2/packages/ltx-trainer/scripts/train.py", line 59, in main
+[rank5]:     trainer = LtxvTrainer(trainer_config)
+[rank5]:   File "/data/vjuicefs_ai_camera_jgroup_acadmic/public_data/11194554/WorkSpace/LTX-2/packages/ltx-trainer/src/ltx_trainer/trainer_vanilla_base.py", line 110, in __init__
+[rank5]:     self._prepare_models_for_training()
+[rank5]:   File "/data/vjuicefs_ai_camera_jgroup_acadmic/public_data/11194554/WorkSpace/LTX-2/packages/ltx-trainer/src/ltx_trainer/trainer_audio_full.py", line 268, in _prepare_models_for_training
+[rank5]:     plugin.auto_wrap_policy = fsdp_auto_wrap_policy(self._transformer)
+[rank5]:   File "/root/miniconda3/envs/ltx/lib/python3.10/site-packages/peft/utils/other.py", line 1168, in fsdp_auto_wrap_policy
+[rank5]:     raise Exception("Could not find the transformer layer class to wrap in the model.")
+[rank5]: Exception: Could not find the transformer layer class to wrap in the model.
+[rank4]: Traceback (most recent call last):
+[rank4]:   File "/data/vjuicefs_ai_camera_jgroup_acadmic/public_data/11194554/WorkSpace/LTX-2/packages/ltx-trainer/scripts/train.py", line 64, in <module>
+[rank4]:     app()
+[rank4]:   File "/root/miniconda3/envs/ltx/lib/python3.10/site-packages/typer/main.py", line 1152, in __call__
+[rank4]:     raise e
+[rank4]:   File "/root/miniconda3/envs/ltx/lib/python3.10/site-packages/typer/main.py", line 1135, in __call__
+[rank4]:     return get_command(self)(*args, **kwargs)
+[rank4]:   File "/root/miniconda3/envs/ltx/lib/python3.10/site-packages/click/core.py", line 1524, in __call__
+[rank4]:     return self.main(*args, **kwargs)
+[rank4]:   File "/root/miniconda3/envs/ltx/lib/python3.10/site-packages/typer/core.py", line 708, in main
+[rank4]:     return _main(
+[rank4]:   File "/root/miniconda3/envs/ltx/lib/python3.10/site-packages/typer/core.py", line 188, in _main
+[rank4]:     rv = self.invoke(ctx)
+[rank4]:   File "/root/miniconda3/envs/ltx/lib/python3.10/site-packages/click/core.py", line 1308, in invoke
+[rank4]:     return ctx.invoke(self.callback, **ctx.params)
+[rank4]:   File "/root/miniconda3/envs/ltx/lib/python3.10/site-packages/click/core.py", line 877, in invoke
+[rank4]:     return callback(*args, **kwargs)
+[rank4]:   File "/root/miniconda3/envs/ltx/lib/python3.10/site-packages/typer/main.py", line 1514, in wrapper
+[rank4]:     return callback(**use_params)
+[rank4]:   File "/data/vjuicefs_ai_camera_jgroup_acadmic/public_data/11194554/WorkSpace/LTX-2/packages/ltx-trainer/scripts/train.py", line 59, in main
+[rank4]:     trainer = LtxvTrainer(trainer_config)
+[rank4]:   File "/data/vjuicefs_ai_camera_jgroup_acadmic/public_data/11194554/WorkSpace/LTX-2/packages/ltx-trainer/src/ltx_trainer/trainer_vanilla_base.py", line 110, in __init__
+[rank4]:     self._prepare_models_for_training()
+[rank4]:   File "/data/vjuicefs_ai_camera_jgroup_acadmic/public_data/11194554/WorkSpace/LTX-2/packages/ltx-trainer/src/ltx_trainer/trainer_audio_full.py", line 268, in _prepare_models_for_training
+[rank4]:     plugin.auto_wrap_policy = fsdp_auto_wrap_policy(self._transformer)
+[rank4]:   File "/root/miniconda3/envs/ltx/lib/python3.10/site-packages/peft/utils/other.py", line 1168, in fsdp_auto_wrap_policy
+[rank4]:     raise Exception("Could not find the transformer layer class to wrap in the model.")
+[rank4]: Exception: Could not find the transformer layer class to wrap in the model.
+[rank0]: Traceback (most recent call last):
+[rank0]:   File "/data/vjuicefs_ai_camera_jgroup_acadmic/public_data/11194554/WorkSpace/LTX-2/packages/ltx-trainer/scripts/train.py", line 64, in <module>
+[rank0]:     app()
+[rank0]:   File "/root/miniconda3/envs/ltx/lib/python3.10/site-packages/typer/main.py", line 1152, in __call__
+[rank0]:     raise e
+[rank0]:   File "/root/miniconda3/envs/ltx/lib/python3.10/site-packages/typer/main.py", line 1135, in __call__
+[rank0]:     return get_command(self)(*args, **kwargs)
+[rank0]:   File "/root/miniconda3/envs/ltx/lib/python3.10/site-packages/click/core.py", line 1524, in __call__
+[rank0]:     return self.main(*args, **kwargs)
+[rank0]:   File "/root/miniconda3/envs/ltx/lib/python3.10/site-packages/typer/core.py", line 708, in main
+[rank0]:     return _main(
+[rank0]:   File "/root/miniconda3/envs/ltx/lib/python3.10/site-packages/typer/core.py", line 188, in _main
+[rank0]:     rv = self.invoke(ctx)
+[rank0]:   File "/root/miniconda3/envs/ltx/lib/python3.10/site-packages/click/core.py", line 1308, in invoke
+[rank0]:     return ctx.invoke(self.callback, **ctx.params)
+[rank0]:   File "/root/miniconda3/envs/ltx/lib/python3.10/site-packages/click/core.py", line 877, in invoke
+[rank0]:     return callback(*args, **kwargs)
+[rank0]:   File "/root/miniconda3/envs/ltx/lib/python3.10/site-packages/typer/main.py", line 1514, in wrapper
+[rank0]:     return callback(**use_params)
+[rank0]:   File "/data/vjuicefs_ai_camera_jgroup_acadmic/public_data/11194554/WorkSpace/LTX-2/packages/ltx-trainer/scripts/train.py", line 59, in main
+[rank0]:     trainer = LtxvTrainer(trainer_config)
+[rank0]:   File "/data/vjuicefs_ai_camera_jgroup_acadmic/public_data/11194554/WorkSpace/LTX-2/packages/ltx-trainer/src/ltx_trainer/trainer_vanilla_base.py", line 110, in __init__
+[rank0]:     self._prepare_models_for_training()
+[rank0]:   File "/data/vjuicefs_ai_camera_jgroup_acadmic/public_data/11194554/WorkSpace/LTX-2/packages/ltx-trainer/src/ltx_trainer/trainer_audio_full.py", line 268, in _prepare_models_for_training
+[rank0]:     plugin.auto_wrap_policy = fsdp_auto_wrap_policy(self._transformer)
+[rank0]:   File "/root/miniconda3/envs/ltx/lib/python3.10/site-packages/peft/utils/other.py", line 1168, in fsdp_auto_wrap_policy
+[rank0]:     raise Exception("Could not find the transformer layer class to wrap in the model.")
+[rank0]: Exception: Could not find the transformer layer class to wrap in the model.
+[rank1]: Traceback (most recent call last):
+[rank1]:   File "/data/vjuicefs_ai_camera_jgroup_acadmic/public_data/11194554/WorkSpace/LTX-2/packages/ltx-trainer/scripts/train.py", line 64, in <module>
+[rank1]:     app()
+[rank1]:   File "/root/miniconda3/envs/ltx/lib/python3.10/site-packages/typer/main.py", line 1152, in __call__
+[rank1]:     raise e
+[rank1]:   File "/root/miniconda3/envs/ltx/lib/python3.10/site-packages/typer/main.py", line 1135, in __call__
+[rank1]:     return get_command(self)(*args, **kwargs)
+[rank1]:   File "/root/miniconda3/envs/ltx/lib/python3.10/site-packages/click/core.py", line 1524, in __call__
+[rank1]:     return self.main(*args, **kwargs)
+[rank1]:   File "/root/miniconda3/envs/ltx/lib/python3.10/site-packages/typer/core.py", line 708, in main
+[rank1]:     return _main(
+[rank1]:   File "/root/miniconda3/envs/ltx/lib/python3.10/site-packages/typer/core.py", line 188, in _main
+[rank1]:     rv = self.invoke(ctx)
+[rank1]:   File "/root/miniconda3/envs/ltx/lib/python3.10/site-packages/click/core.py", line 1308, in invoke
+[rank1]:     return ctx.invoke(self.callback, **ctx.params)
+[rank1]:   File "/root/miniconda3/envs/ltx/lib/python3.10/site-packages/click/core.py", line 877, in invoke
+[rank1]:     return callback(*args, **kwargs)
+[rank1]:   File "/root/miniconda3/envs/ltx/lib/python3.10/site-packages/typer/main.py", line 1514, in wrapper
+[rank1]:     return callback(**use_params)
+[rank1]:   File "/data/vjuicefs_ai_camera_jgroup_acadmic/public_data/11194554/WorkSpace/LTX-2/packages/ltx-trainer/scripts/train.py", line 59, in main
+[rank1]:     trainer = LtxvTrainer(trainer_config)
+[rank1]:   File "/data/vjuicefs_ai_camera_jgroup_acadmic/public_data/11194554/WorkSpace/LTX-2/packages/ltx-trainer/src/ltx_trainer/trainer_vanilla_base.py", line 110, in __init__
+[rank1]:     self._prepare_models_for_training()
+[rank1]:   File "/data/vjuicefs_ai_camera_jgroup_acadmic/public_data/11194554/WorkSpace/LTX-2/packages/ltx-trainer/src/ltx_trainer/trainer_audio_full.py", line 268, in _prepare_models_for_training
+[rank1]:     plugin.auto_wrap_policy = fsdp_auto_wrap_policy(self._transformer)
+[rank1]:   File "/root/miniconda3/envs/ltx/lib/python3.10/site-packages/peft/utils/other.py", line 1168, in fsdp_auto_wrap_policy
+[rank1]:     raise Exception("Could not find the transformer layer class to wrap in the model.")
+[rank1]: Exception: Could not find the transformer layer class to wrap in the model.
+[rank7]: Traceback (most recent call last):
+[rank7]:   File "/data/vjuicefs_ai_camera_jgroup_acadmic/public_data/11194554/WorkSpace/LTX-2/packages/ltx-trainer/scripts/train.py", line 64, in <module>
+[rank7]:     app()
+[rank7]:   File "/root/miniconda3/envs/ltx/lib/python3.10/site-packages/typer/main.py", line 1152, in __call__
+[rank7]:     raise e
+[rank7]:   File "/root/miniconda3/envs/ltx/lib/python3.10/site-packages/typer/main.py", line 1135, in __call__
+[rank7]:     return get_command(self)(*args, **kwargs)
+[rank7]:   File "/root/miniconda3/envs/ltx/lib/python3.10/site-packages/click/core.py", line 1524, in __call__
+[rank7]:     return self.main(*args, **kwargs)
+[rank7]:   File "/root/miniconda3/envs/ltx/lib/python3.10/site-packages/typer/core.py", line 708, in main
+[rank7]:     return _main(
+[rank7]:   File "/root/miniconda3/envs/ltx/lib/python3.10/site-packages/typer/core.py", line 188, in _main
+[rank7]:     rv = self.invoke(ctx)
+[rank7]:   File "/root/miniconda3/envs/ltx/lib/python3.10/site-packages/click/core.py", line 1308, in invoke
+[rank7]:     return ctx.invoke(self.callback, **ctx.params)
+[rank7]:   File "/root/miniconda3/envs/ltx/lib/python3.10/site-packages/click/core.py", line 877, in invoke
+[rank7]:     return callback(*args, **kwargs)
+[rank7]:   File "/root/miniconda3/envs/ltx/lib/python3.10/site-packages/typer/main.py", line 1514, in wrapper
+[rank7]:     return callback(**use_params)
+[rank7]:   File "/data/vjuicefs_ai_camera_jgroup_acadmic/public_data/11194554/WorkSpace/LTX-2/packages/ltx-trainer/scripts/train.py", line 59, in main
+[rank7]:     trainer = LtxvTrainer(trainer_config)
+[rank7]:   File "/data/vjuicefs_ai_camera_jgroup_acadmic/public_data/11194554/WorkSpace/LTX-2/packages/ltx-trainer/src/ltx_trainer/trainer_vanilla_base.py", line 110, in __init__
+[rank7]:     self._prepare_models_for_training()
+[rank7]:   File "/data/vjuicefs_ai_camera_jgroup_acadmic/public_data/11194554/WorkSpace/LTX-2/packages/ltx-trainer/src/ltx_trainer/trainer_audio_full.py", line 268, in _prepare_models_for_training
+[rank7]:     plugin.auto_wrap_policy = fsdp_auto_wrap_policy(self._transformer)
+[rank7]:   File "/root/miniconda3/envs/ltx/lib/python3.10/site-packages/peft/utils/other.py", line 1168, in fsdp_auto_wrap_policy
+[rank7]:     raise Exception("Could not find the transformer layer class to wrap in the model.")
+[rank7]: Exception: Could not find the transformer layer class to wrap in the model.
+[rank2]: Traceback (most recent call last):
+[rank2]:   File "/data/vjuicefs_ai_camera_jgroup_acadmic/public_data/11194554/WorkSpace/LTX-2/packages/ltx-trainer/scripts/train.py", line 64, in <module>
+[rank2]:     app()
+[rank2]:   File "/root/miniconda3/envs/ltx/lib/python3.10/site-packages/typer/main.py", line 1152, in __call__
+[rank2]:     raise e
+[rank2]:   File "/root/miniconda3/envs/ltx/lib/python3.10/site-packages/typer/main.py", line 1135, in __call__
+[rank2]:     return get_command(self)(*args, **kwargs)
+[rank2]:   File "/root/miniconda3/envs/ltx/lib/python3.10/site-packages/click/core.py", line 1524, in __call__
+[rank2]:     return self.main(*args, **kwargs)
+[rank2]:   File "/root/miniconda3/envs/ltx/lib/python3.10/site-packages/typer/core.py", line 708, in main
+[rank2]:     return _main(
+[rank2]:   File "/root/miniconda3/envs/ltx/lib/python3.10/site-packages/typer/core.py", line 188, in _main
+[rank2]:     rv = self.invoke(ctx)
+[rank2]:   File "/root/miniconda3/envs/ltx/lib/python3.10/site-packages/click/core.py", line 1308, in invoke
+[rank2]:     return ctx.invoke(self.callback, **ctx.params)
+[rank2]:   File "/root/miniconda3/envs/ltx/lib/python3.10/site-packages/click/core.py", line 877, in invoke
+[rank2]:     return callback(*args, **kwargs)
+[rank2]:   File "/root/miniconda3/envs/ltx/lib/python3.10/site-packages/typer/main.py", line 1514, in wrapper
+[rank2]:     return callback(**use_params)
+[rank2]:   File "/data/vjuicefs_ai_camera_jgroup_acadmic/public_data/11194554/WorkSpace/LTX-2/packages/ltx-trainer/scripts/train.py", line 59, in main
+[rank2]:     trainer = LtxvTrainer(trainer_config)
+[rank2]:   File "/data/vjuicefs_ai_camera_jgroup_acadmic/public_data/11194554/WorkSpace/LTX-2/packages/ltx-trainer/src/ltx_trainer/trainer_vanilla_base.py", line 110, in __init__
+[rank2]:     self._prepare_models_for_training()
+[rank2]:   File "/data/vjuicefs_ai_camera_jgroup_acadmic/public_data/11194554/WorkSpace/LTX-2/packages/ltx-trainer/src/ltx_trainer/trainer_audio_full.py", line 268, in _prepare_models_for_training
+[rank2]:     plugin.auto_wrap_policy = fsdp_auto_wrap_policy(self._transformer)
+[rank2]:   File "/root/miniconda3/envs/ltx/lib/python3.10/site-packages/peft/utils/other.py", line 1168, in fsdp_auto_wrap_policy
+[rank2]:     raise Exception("Could not find the transformer layer class to wrap in the model.")
+[rank2]: Exception: Could not find the transformer layer class to wrap in the model.
+[rank3]: Traceback (most recent call last):
+[rank3]:   File "/data/vjuicefs_ai_camera_jgroup_acadmic/public_data/11194554/WorkSpace/LTX-2/packages/ltx-trainer/scripts/train.py", line 64, in <module>
+[rank3]:     app()
+[rank3]:   File "/root/miniconda3/envs/ltx/lib/python3.10/site-packages/typer/main.py", line 1152, in __call__
+[rank3]:     raise e
+[rank3]:   File "/root/miniconda3/envs/ltx/lib/python3.10/site-packages/typer/main.py", line 1135, in __call__
+[rank3]:     return get_command(self)(*args, **kwargs)
+[rank3]:   File "/root/miniconda3/envs/ltx/lib/python3.10/site-packages/click/core.py", line 1524, in __call__
+[rank3]:     return self.main(*args, **kwargs)
+[rank3]:   File "/root/miniconda3/envs/ltx/lib/python3.10/site-packages/typer/core.py", line 708, in main
+[rank3]:     return _main(
+[rank3]:   File "/root/miniconda3/envs/ltx/lib/python3.10/site-packages/typer/core.py", line 188, in _main
+[rank3]:     rv = self.invoke(ctx)
+[rank3]:   File "/root/miniconda3/envs/ltx/lib/python3.10/site-packages/click/core.py", line 1308, in invoke
+[rank3]:     return ctx.invoke(self.callback, **ctx.params)
+[rank3]:   File "/root/miniconda3/envs/ltx/lib/python3.10/site-packages/click/core.py", line 877, in invoke
+[rank3]:     return callback(*args, **kwargs)
+[rank3]:   File "/root/miniconda3/envs/ltx/lib/python3.10/site-packages/typer/main.py", line 1514, in wrapper
+[rank3]:     return callback(**use_params)
+[rank3]:   File "/data/vjuicefs_ai_camera_jgroup_acadmic/public_data/11194554/WorkSpace/LTX-2/packages/ltx-trainer/scripts/train.py", line 59, in main
+[rank3]:     trainer = LtxvTrainer(trainer_config)
+[rank3]:   File "/data/vjuicefs_ai_camera_jgroup_acadmic/public_data/11194554/WorkSpace/LTX-2/packages/ltx-trainer/src/ltx_trainer/trainer_vanilla_base.py", line 110, in __init__
+[rank3]:     self._prepare_models_for_training()
+[rank3]:   File "/data/vjuicefs_ai_camera_jgroup_acadmic/public_data/11194554/WorkSpace/LTX-2/packages/ltx-trainer/src/ltx_trainer/trainer_audio_full.py", line 268, in _prepare_models_for_training
+[rank3]:     plugin.auto_wrap_policy = fsdp_auto_wrap_policy(self._transformer)
+[rank3]:   File "/root/miniconda3/envs/ltx/lib/python3.10/site-packages/peft/utils/other.py", line 1168, in fsdp_auto_wrap_policy
+[rank3]:     raise Exception("Could not find the transformer layer class to wrap in the model.")
+[rank3]: Exception: Could not find the transformer layer class to wrap in the model.
+[rank6]: Traceback (most recent call last):
+[rank6]:   File "/data/vjuicefs_ai_camera_jgroup_acadmic/public_data/11194554/WorkSpace/LTX-2/packages/ltx-trainer/scripts/train.py", line 64, in <module>
+[rank6]:     app()
+[rank6]:   File "/root/miniconda3/envs/ltx/lib/python3.10/site-packages/typer/main.py", line 1152, in __call__
+[rank6]:     raise e
+[rank6]:   File "/root/miniconda3/envs/ltx/lib/python3.10/site-packages/typer/main.py", line 1135, in __call__
+[rank6]:     return get_command(self)(*args, **kwargs)
+[rank6]:   File "/root/miniconda3/envs/ltx/lib/python3.10/site-packages/click/core.py", line 1524, in __call__
+[rank6]:     return self.main(*args, **kwargs)
+[rank6]:   File "/root/miniconda3/envs/ltx/lib/python3.10/site-packages/typer/core.py", line 708, in main
+[rank6]:     return _main(
+[rank6]:   File "/root/miniconda3/envs/ltx/lib/python3.10/site-packages/typer/core.py", line 188, in _main
+[rank6]:     rv = self.invoke(ctx)
+[rank6]:   File "/root/miniconda3/envs/ltx/lib/python3.10/site-packages/click/core.py", line 1308, in invoke
+[rank6]:     return ctx.invoke(self.callback, **ctx.params)
+[rank6]:   File "/root/miniconda3/envs/ltx/lib/python3.10/site-packages/click/core.py", line 877, in invoke
+[rank6]:     return callback(*args, **kwargs)
+[rank6]:   File "/root/miniconda3/envs/ltx/lib/python3.10/site-packages/typer/main.py", line 1514, in wrapper
+[rank6]:     return callback(**use_params)
+[rank6]:   File "/data/vjuicefs_ai_camera_jgroup_acadmic/public_data/11194554/WorkSpace/LTX-2/packages/ltx-trainer/scripts/train.py", line 59, in main
+[rank6]:     trainer = LtxvTrainer(trainer_config)
+[rank6]:   File "/data/vjuicefs_ai_camera_jgroup_acadmic/public_data/11194554/WorkSpace/LTX-2/packages/ltx-trainer/src/ltx_trainer/trainer_vanilla_base.py", line 110, in __init__
+[rank6]:     self._prepare_models_for_training()
+[rank6]:   File "/data/vjuicefs_ai_camera_jgroup_acadmic/public_data/11194554/WorkSpace/LTX-2/packages/ltx-trainer/src/ltx_trainer/trainer_audio_full.py", line 268, in _prepare_models_for_training
+[rank6]:     plugin.auto_wrap_policy = fsdp_auto_wrap_policy(self._transformer)
+[rank6]:   File "/root/miniconda3/envs/ltx/lib/python3.10/site-packages/peft/utils/other.py", line 1168, in fsdp_auto_wrap_policy
+[rank6]:     raise Exception("Could not find the transformer layer class to wrap in the model.")
+[rank6]: Exception: Could not find the transformer layer class to wrap in the model.
+[rank0]:[W805 05:09:58.785775901 ProcessGroupNCCL.cpp:1575] Warning: WARNING: destroy_process_group() was not called before program exit, which can leak resources. For more info, please see https://pytorch.org/docs/stable/distributed.html#shutdown (function operator())
+W0805 05:09:59.360000 3301509 site-packages/torch/distributed/elastic/multiprocessing/api.py:1012] Sending process 3301576 closing signal SIGTERM
+W0805 05:09:59.360000 3301509 site-packages/torch/distributed/elastic/multiprocessing/api.py:1012] Sending process 3301578 closing signal SIGTERM
+W0805 05:09:59.360000 3301509 site-packages/torch/distributed/elastic/multiprocessing/api.py:1012] Sending process 3301579 closing signal SIGTERM
+W0805 05:09:59.360000 3301509 site-packages/torch/distributed/elastic/multiprocessing/api.py:1012] Sending process 3301580 closing signal SIGTERM
+W0805 05:09:59.360000 3301509 site-packages/torch/distributed/elastic/multiprocessing/api.py:1012] Sending process 3301581 closing signal SIGTERM
+W0805 05:09:59.361000 3301509 site-packages/torch/distributed/elastic/multiprocessing/api.py:1012] Sending process 3301582 closing signal SIGTERM
+W0805 05:09:59.361000 3301509 site-packages/torch/distributed/elastic/multiprocessing/api.py:1012] Sending process 3301583 closing signal SIGTERM
+E0805 05:10:00.640000 3301509 site-packages/torch/distributed/elastic/multiprocessing/api.py:986] failed (exitcode: 1) local_rank: 1 (pid: 3301577) of binary: /root/miniconda3/envs/ltx/bin/python3.10
+Traceback (most recent call last):
+  File "/root/miniconda3/envs/ltx/bin/accelerate", line 6, in <module>
+    sys.exit(main())
+  File "/root/miniconda3/envs/ltx/lib/python3.10/site-packages/accelerate/commands/accelerate_cli.py", line 50, in main
+    args.func(args)
+  File "/root/miniconda3/envs/ltx/lib/python3.10/site-packages/accelerate/commands/launch.py", line 1392, in launch_command
+    multi_gpu_launcher(args)
+  File "/root/miniconda3/envs/ltx/lib/python3.10/site-packages/accelerate/commands/launch.py", line 1023, in multi_gpu_launcher
+    distrib_run.run(args)
+  File "/root/miniconda3/envs/ltx/lib/python3.10/site-packages/torch/distributed/run.py", line 981, in run
+    elastic_launch(
+  File "/root/miniconda3/envs/ltx/lib/python3.10/site-packages/torch/distributed/launcher/api.py", line 170, in __call__
+    return launch_agent(self._config, self._entrypoint, list(args))
+  File "/root/miniconda3/envs/ltx/lib/python3.10/site-packages/torch/distributed/launcher/api.py", line 317, in launch_agent
+    raise ChildFailedError(
+torch.distributed.elastic.multiprocessing.errors.ChildFailedError: 
+============================================================
+scripts/train.py FAILED
+------------------------------------------------------------
+Failures:
+[1]:
+  time      : 2026-08-05_05:10:00
+  host      : custom-20260413030642291-worker-0
+  rank      : 0 (local_rank: 0)
+  exitcode  : 1 (pid: 3301576)
+  error_file: <N/A>
+  traceback : To enable traceback see: https://pytorch.org/docs/stable/elastic/errors.html
+[2]:
+  time      : 2026-08-05_05:10:00
+  host      : custom-20260413030642291-worker-0
+  rank      : 2 (local_rank: 2)
+  exitcode  : 1 (pid: 3301578)
+  error_file: <N/A>
+  traceback : To enable traceback see: https://pytorch.org/docs/stable/elastic/errors.html
+[3]:
+  time      : 2026-08-05_05:10:00
+  host      : custom-20260413030642291-worker-0
+  rank      : 3 (local_rank: 3)
+  exitcode  : 1 (pid: 3301579)
+  error_file: <N/A>
+  traceback : To enable traceback see: https://pytorch.org/docs/stable/elastic/errors.html
+[4]:
+  time      : 2026-08-05_05:10:00
+  host      : custom-20260413030642291-worker-0
+  rank      : 4 (local_rank: 4)
+  exitcode  : 1 (pid: 3301580)
+  error_file: <N/A>
+  traceback : To enable traceback see: https://pytorch.org/docs/stable/elastic/errors.html
+[5]:
+  time      : 2026-08-05_05:10:00
+  host      : custom-20260413030642291-worker-0
+  rank      : 5 (local_rank: 5)
+  exitcode  : 1 (pid: 3301581)
+  error_file: <N/A>
+  traceback : To enable traceback see: https://pytorch.org/docs/stable/elastic/errors.html
+[6]:
+  time      : 2026-08-05_05:10:00
+  host      : custom-20260413030642291-worker-0
+  rank      : 6 (local_rank: 6)
+  exitcode  : 1 (pid: 3301582)
+  error_file: <N/A>
+  traceback : To enable traceback see: https://pytorch.org/docs/stable/elastic/errors.html
+[7]:
+  time      : 2026-08-05_05:10:00
+  host      : custom-20260413030642291-worker-0
+  rank      : 7 (local_rank: 7)
+  exitcode  : 1 (pid: 3301583)
+  error_file: <N/A>
+  traceback : To enable traceback see: https://pytorch.org/docs/stable/elastic/errors.html
+------------------------------------------------------------
+Root Cause (first observed failure):
+[0]:
+  time      : 2026-08-05_05:09:59
+  host      : custom-20260413030642291-worker-0
+  rank      : 1 (local_rank: 1)
+  exitcode  : 1 (pid: 3301577)
+  error_file: <N/A>
+  traceback : To enable traceback see: https://pytorch.org/docs/stable/elastic/errors.html
+============================================================
