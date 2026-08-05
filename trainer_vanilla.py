@@ -264,15 +264,44 @@ class LtxvTrainer(_BaseTrainer):
     def _prepare_models_for_training(self) -> None:
         if not self._is_audio_full():
             return super()._prepare_models_for_training()
+
+        base = self._transformer.get_base_model()
+
         if self._accelerator.distributed_type == DistributedType.FSDP:
             self._transformer = self._transformer.to(dtype=torch.float32)
-            from peft.utils.other import fsdp_auto_wrap_policy
+
             plugin = self._accelerator.state.fsdp_plugin
             if plugin is None or not getattr(plugin, "use_orig_params", False):
-                raise RuntimeError("audio_full FSDP requires fsdp_use_orig_params=true")
-            plugin.auto_wrap_policy = fsdp_auto_wrap_policy(self._transformer)
-        base = self._transformer.get_base_model()
-        base.set_gradient_checkpointing(self._config.optimization.enable_gradient_checkpointing)
+                raise RuntimeError(
+                    "audio_full FSDP requires fsdp_use_orig_params=true"
+                )
+
+            transformer_blocks = getattr(base, "transformer_blocks", None)
+            if transformer_blocks is None or len(transformer_blocks) == 0:
+                raise RuntimeError(
+                    "Could not locate LTX transformer_blocks for FSDP wrapping"
+                )
+
+            # PEFT's fsdp_auto_wrap_policy expects Hugging Face metadata such as
+            # _no_split_modules. LTX uses a custom transformer implementation, so
+            # derive the actual block class from the loaded model and use PyTorch's
+            # native transformer policy instead.
+            from functools import partial
+            from torch.distributed.fsdp.wrap import transformer_auto_wrap_policy
+
+            transformer_block_cls = type(transformer_blocks[0])
+            plugin.auto_wrap_policy = partial(
+                transformer_auto_wrap_policy,
+                transformer_layer_cls={transformer_block_cls},
+            )
+            logger.info(
+                "Installed LTX FSDP auto-wrap policy for transformer block class: "
+                f"{transformer_block_cls.__module__}.{transformer_block_cls.__name__}"
+            )
+
+        base.set_gradient_checkpointing(
+            self._config.optimization.enable_gradient_checkpointing
+        )
         self._transformer = self._accelerator.prepare(self._transformer)
 
     def _save_checkpoint(self) -> Path | None:
