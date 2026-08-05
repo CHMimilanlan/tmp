@@ -4,15 +4,18 @@ from __future__ import annotations
 import os
 import re
 from dataclasses import replace
+from functools import partial
 from pathlib import Path
 
 import torch
 from accelerate import DistributedType
+from ltx_core.model.transformer.transformer import BasicAVTransformerBlock
+from ltx_core.text_encoders.gemma import convert_to_additive_mask
 from peft import LoraConfig, get_peft_model, get_peft_model_state_dict, set_peft_model_state_dict
 from safetensors import safe_open
 from safetensors.torch import load_file, save_file
 from torch import Tensor
-from ltx_core.text_encoders.gemma import convert_to_additive_mask
+from torch.distributed.fsdp.wrap import transformer_auto_wrap_policy
 
 from ltx_trainer.trainer_vanilla_base import *  # noqa: F403
 from ltx_trainer.trainer_vanilla_base import LtxvTrainer as _BaseTrainer
@@ -261,12 +264,22 @@ class LtxvTrainer(_BaseTrainer):
             return super()._prepare_models_for_training()
         if self._accelerator.distributed_type == DistributedType.FSDP:
             self._transformer = self._transformer.to(dtype=torch.float32)
-            from peft.utils.other import fsdp_auto_wrap_policy
             plugin = self._accelerator.state.fsdp_plugin
             if plugin is None or not getattr(plugin, "use_orig_params", False):
                 raise RuntimeError("audio_full FSDP requires fsdp_use_orig_params=true")
-            
-            plugin.auto_wrap_policy = fsdp_auto_wrap_policy(self._transformer)
+
+            # PEFT's fsdp_auto_wrap_policy wraps every trainable leaf module. LTX's
+            # argument preprocessors keep direct references to modules such as
+            # audio_patchify_proj. Replacing that registered Linear with a nested FSDP
+            # wrapper leaves the preprocessor pointing at the original Linear, whose
+            # weight is a 1-D local shard outside the nested wrapper's forward context.
+            # Wrap only complete AV transformer blocks; the root FSDP instance owns the
+            # top-level patchify/AdaLN/output modules and unshards them for the full model
+            # forward, so those direct references remain valid.
+            plugin.auto_wrap_policy = partial(
+                transformer_auto_wrap_policy,
+                transformer_layer_cls={BasicAVTransformerBlock},
+            )
         base = self._transformer.get_base_model()
         base.set_gradient_checkpointing(self._config.optimization.enable_gradient_checkpointing)
         self._transformer = self._accelerator.prepare(self._transformer)
