@@ -1,0 +1,866 @@
+DEBUG    [rank 0] 🎯 Using FlexibleStrategy training strategy (audio enabled 🔈)                                                                          __init__.py:89
+DEBUG    [rank 0] Loading text encoder for validation embedding caching...                                                               validation_runner_bakcup.py:262
+DEBUG    [rank 0] Loading embeddings processor for validation embedding caching...                                                       validation_runner_bakcup.py:267
+INFO     [rank 0] Pre-computing embeddings for 2 validation prompts...                                                                   validation_runner_bakcup.py:272
+DEBUG    [rank 0] Validation prompt embeddings cached. Text encoder unloaded.                                                            validation_runner_bakcup.py:293
+DEBUG    [rank 0] Loading VAE encoder for validation media encoding...                                                                   validation_runner_bakcup.py:327
+INFO     [rank 0] Pre-encoding conditioning media for 2 validation samples...                                                            validation_runner_bakcup.py:333
+INFO     [rank 0] Validation conditioning media cached on CPU.                                                                           validation_runner_bakcup.py:341
+DEBUG    [rank 0] Loading video VAE decoder for validation...                                                                            validation_runner_bakcup.py:409
+DEBUG    [rank 0] Loading audio decoder and vocoder for validation...                                                                    validation_runner_bakcup.py:420
+INFO     [rank 0] Cached validation track 1:                                                                                                    validation_runner.py:106
+         /data/vjuicefs_ai_camera_jgroup_video/public_data/Video_Data/VideoAudioData/SpatializeDataset_LTX/validation_samples/768x512/left_to_r                         
+         ight_tracks.pt                                                                                                                                                 
+INFO     [rank 0] Cached validation track 2:                                                                                                    validation_runner.py:106
+         /data/vjuicefs_ai_camera_jgroup_video/public_data/Video_Data/VideoAudioData/SpatializeDataset_LTX/validation_samples/640x384/right_to_                         
+         left_tracks.pt                                                                                                                                                 
+DEBUG    [rank 0] Loading transformer...                                                                                                     trainer_vanilla_base.py:397
+INFO     [rank 1] Building transformer with attention backends -- self: SDPA[CUDNN_ATTENTION>FLASH_ATTENTION>EFFICIENT_ATTENTION>MATH], masked:              model.py:86
+         SDPA[CUDNN_ATTENTION>FLASH_ATTENTION>EFFICIENT_ATTENTION>MATH]                                                                                                 
+INFO     [rank 0] Building transformer with attention backends -- self: SDPA[CUDNN_ATTENTION>FLASH_ATTENTION>EFFICIENT_ATTENTION>MATH], masked:              model.py:86
+         SDPA[CUDNN_ATTENTION>FLASH_ATTENTION>EFFICIENT_ATTENTION>MATH]                                                                                                 
+INFO     [rank 5] Building transformer with attention backends -- self: SDPA[CUDNN_ATTENTION>FLASH_ATTENTION>EFFICIENT_ATTENTION>MATH], masked:              model.py:86
+         SDPA[CUDNN_ATTENTION>FLASH_ATTENTION>EFFICIENT_ATTENTION>MATH]                                                                                                 
+INFO     [rank 4] Building transformer with attention backends -- self: SDPA[CUDNN_ATTENTION>FLASH_ATTENTION>EFFICIENT_ATTENTION>MATH], masked:              model.py:86
+         SDPA[CUDNN_ATTENTION>FLASH_ATTENTION>EFFICIENT_ATTENTION>MATH]                                                                                                 
+INFO     [rank 7] Building transformer with attention backends -- self: SDPA[CUDNN_ATTENTION>FLASH_ATTENTION>EFFICIENT_ATTENTION>MATH], masked:              model.py:86
+         SDPA[CUDNN_ATTENTION>FLASH_ATTENTION>EFFICIENT_ATTENTION>MATH]                                                                                                 
+INFO     [rank 3] Building transformer with attention backends -- self: SDPA[CUDNN_ATTENTION>FLASH_ATTENTION>EFFICIENT_ATTENTION>MATH], masked:              model.py:86
+         SDPA[CUDNN_ATTENTION>FLASH_ATTENTION>EFFICIENT_ATTENTION>MATH]                                                                                                 
+INFO     [rank 6] Building transformer with attention backends -- self: SDPA[CUDNN_ATTENTION>FLASH_ATTENTION>EFFICIENT_ATTENTION>MATH], masked:              model.py:86
+         SDPA[CUDNN_ATTENTION>FLASH_ATTENTION>EFFICIENT_ATTENTION>MATH]                                                                                                 
+INFO     [rank 2] Building transformer with attention backends -- self: SDPA[CUDNN_ATTENTION>FLASH_ATTENTION>EFFICIENT_ATTENTION>MATH], masked:              model.py:86
+         SDPA[CUDNN_ATTENTION>FLASH_ATTENTION>EFFICIENT_ATTENTION>MATH]                                                                                                 
+DEBUG    [rank 0] Loading embeddings processor...                                                                                            trainer_vanilla_base.py:409
+WARNING  [rank 0] [RANK 0] Detected kernel version 5.4.250, which is below the recommended minimum of 5.5.0; this can cause the process to hang. It is      other.py:520
+         recommended to upgrade the kernel to the minimum version or higher.                                                                                            
+INFO     [rank 0] FSDP distributed training enabled with 8 processes                                                                         trainer_vanilla_base.py:776
+INFO     [rank 0] Local batch size: 1, global batch size: 8                                                                                  trainer_vanilla_base.py:783
+INFO     [rank 0] Loaded and froze Motion Track IC-LoRA:                                                                                       trainer_audio_full.py:132
+         /data/vjuicefs_ai_camera_jgroup_video/public_data/Pretrained_models/VideoAudioModels/LTX-2.3-22b-IC-LoRA-Motion-Track-Control/ltx-2.3                          
+         -22b-ic-lora-motion-track-control-ref0.5.safetensors                                                                                                           
+INFO     [rank 0] Audio-full trainable params: 4,529,023,616                                                                                   trainer_audio_full.py:164
+DEBUG    [rank 0] Process 0 using seed: 42                                                                                                   trainer_vanilla_base.py:142
+wandb: [wandb.login()] Loaded credentials for https://api.wandb.ai from /root/.netrc.
+wandb: Currently logged in as: 1821698873 to https://api.wandb.ai. Use `wandb login --relogin` to force relogin
+wandb: Tracking run with wandb version 0.27.0
+wandb: Run data is saved locally in /data/vjuicefs_ai_camera_jgroup_acadmic/public_data/11194554/WorkSpace/LTX-2/packages/ltx-trainer/wandb/run-20260805_071401-w4mcujr7
+wandb: Run `wandb offline` to turn off syncing.
+wandb: Syncing run t2v_audio_full_test_demo
+wandb: ⭐️ View project at https://wandb.ai/1821698873/LTX
+wandb: 🚀 View run at https://wandb.ai/1821698873/LTX/runs/w4mcujr7
+DEBUG    [rank 0] Source conditions: 21 files                                                                                                            datasets.py:195
+DEBUG    [rank 0] Source latents: 21 files                                                                                                               datasets.py:195
+DEBUG    [rank 0] Source audio_latents: 21 files                                                                                                         datasets.py:195
+DEBUG    [rank 0] Source reference_latents: 21 files                                                                                                     datasets.py:195
+DEBUG    [rank 0] Fast index: 21 valid samples from 21 total                                                                                             datasets.py:226
+DEBUG    [rank 0] Loaded dataset with 21 samples from sources: ['conditions', 'latents', 'audio_latents', 'reference_latents']               trainer_vanilla_base.py:663
+INFO     [rank 0] 💾 Training configuration saved to: training_config.yaml                                                                  trainer_vanilla_base.py:1092
+INFO     [rank 0] 🚀 Starting training...                                                                                                    trainer_vanilla_base.py:176
+Training 0/8000 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ Starting... 0:00:00 ETA: --:--
+Sampling 1/1    ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ step 0/30   0:00:00 ETA: --:--torch.Size([1, 4800, 128])
+torch.Size([1, 4800, 128])
+torch.Size([1, 4800, 128])
+torch.Size([1, 4800, 128])
+torch.Size([1, 4800, 128])
+torch.Size([1, 4800, 128])
+torch.Size([1, 4800, 128])
+Training 0/8000 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ Starting... 0:00:00 ETA: --:--
+Sampling 1/1    ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ step 0/30   0:00:00 ETA: --:--torch.Size([1, 126, 128])
+torch.Size([1, 126, 128])torch.Size([1, 126, 128])
+
+torch.Size([1, 126, 128])torch.Size([1, 126, 128])torch.Size([1, 126, 128])
+
+
+torch.Size([1, 126, 128])
+Training 0/8000 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ Starting... 0:00:00 ETA: --:--
+Sampling 1/1    ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ step 0/30   0:00:00 ETA: --:--
+Traceback (most recent call last):
+  File "/data/vjuicefs_ai_camera_jgroup_acadmic/public_data/11194554/WorkSpace/LTX-2/packages/ltx-trainer/scripts/train_audio_full.py", line 63, in <module>
+    app()
+  File "/root/miniconda3/envs/ltx/lib/python3.10/site-packages/typer/main.py", line 1152, in __call__
+    raise e
+  File "/root/miniconda3/envs/ltx/lib/python3.10/site-packages/typer/main.py", line 1135, in __call__
+    return get_command(self)(*args, **kwargs)
+  File "/root/miniconda3/envs/ltx/lib/python3.10/site-packages/click/core.py", line 1524, in __call__
+    return self.main(*args, **kwargs)
+  File "/root/miniconda3/envs/ltx/lib/python3.10/site-packages/typer/core.py", line 708, in main
+    return _main(
+  File "/root/miniconda3/envs/ltx/lib/python3.10/site-packages/typer/core.py", line 188, in _main
+    rv = self.invoke(ctx)
+  File "/root/miniconda3/envs/ltx/lib/python3.10/site-packages/click/core.py", line 1308, in invoke
+    return ctx.invoke(self.callback, **ctx.params)
+  File "/root/miniconda3/envs/ltx/lib/python3.10/site-packages/click/core.py", line 877, in invoke
+    return callback(*args, **kwargs)
+  File "/root/miniconda3/envs/ltx/lib/python3.10/site-packages/typer/main.py", line 1514, in wrapper
+    return callback(**use_params)
+  File "/data/vjuicefs_ai_camera_jgroup_acadmic/public_data/11194554/WorkSpace/LTX-2/packages/ltx-trainer/scripts/train_audio_full.py", line 59, in main
+    trainer.train(disable_progress_bars=disable_progress_bars)
+  File "/data/vjuicefs_ai_camera_jgroup_acadmic/public_data/11194554/WorkSpace/LTX-2/packages/ltx-trainer/src/ltx_trainer/trainer_vanilla_base.py", line 198, in train
+    sampled_videos_paths = self._run_validation(progress)
+  File "/data/vjuicefs_ai_camera_jgroup_acadmic/public_data/11194554/WorkSpace/LTX-2/packages/ltx-trainer/src/ltx_trainer/trainer_vanilla_base.py", line 875, in _run_validation
+    sampled = self._validation_runner.run(
+  File "/root/miniconda3/envs/ltx/lib/python3.10/site-packages/torch/utils/_contextlib.py", line 124, in decorate_context
+    return func(*args, **kwargs)
+  File "/data/vjuicefs_ai_camera_jgroup_acadmic/public_data/11194554/WorkSpace/LTX-2/packages/ltx-trainer/src/ltx_trainer/gpu_utils.py", line 62, in wrapper
+    return func(*args, **kwargs)
+  File "/data/vjuicefs_ai_camera_jgroup_acadmic/public_data/11194554/WorkSpace/LTX-2/packages/ltx-trainer/src/ltx_trainer/validation_runner_bakcup.py", line 201, in run
+    video, audio = self._generate_sample(
+  File "/data/vjuicefs_ai_camera_jgroup_acadmic/public_data/11194554/WorkSpace/LTX-2/packages/ltx-trainer/src/ltx_trainer/validation_runner.py", line 447, in _generate_sample
+    return super()._generate_sample(
+  File "/data/vjuicefs_ai_camera_jgroup_acadmic/public_data/11194554/WorkSpace/LTX-2/packages/ltx-trainer/src/ltx_trainer/validation_runner_bakcup.py", line 560, in _generate_sample
+    video_state, audio_state = self._run_denoising(
+  File "/data/vjuicefs_ai_camera_jgroup_acadmic/public_data/11194554/WorkSpace/LTX-2/packages/ltx-trainer/src/ltx_trainer/validation_runner.py", line 642, in _run_denoising
+    positive_video, positive_audio = x0_model(
+  File "/root/miniconda3/envs/ltx/lib/python3.10/site-packages/torch/nn/modules/module.py", line 1779, in _wrapped_call_impl
+    return self._call_impl(*args, **kwargs)
+  File "/root/miniconda3/envs/ltx/lib/python3.10/site-packages/torch/nn/modules/module.py", line 1790, in _call_impl
+    return forward_call(*args, **kwargs)
+  File "/data/vjuicefs_ai_camera_jgroup_acadmic/public_data/11194554/WorkSpace/LTX-2/packages/ltx-core/src/ltx_core/model/transformer/model.py", line 590, in forward
+    vx, ax = self.velocity_model(video, audio, perturbations)
+  File "/root/miniconda3/envs/ltx/lib/python3.10/site-packages/torch/nn/modules/module.py", line 1779, in _wrapped_call_impl
+    return self._call_impl(*args, **kwargs)
+  File "/root/miniconda3/envs/ltx/lib/python3.10/site-packages/torch/nn/modules/module.py", line 1790, in _call_impl
+    return forward_call(*args, **kwargs)
+  File "/root/miniconda3/envs/ltx/lib/python3.10/site-packages/torch/distributed/fsdp/fully_sharded_data_parallel.py", line 857, in forward
+    output = self._fsdp_wrapped_module(*args, **kwargs)
+  File "/root/miniconda3/envs/ltx/lib/python3.10/site-packages/torch/nn/modules/module.py", line 1779, in _wrapped_call_impl
+    return self._call_impl(*args, **kwargs)
+  File "/root/miniconda3/envs/ltx/lib/python3.10/site-packages/torch/nn/modules/module.py", line 1790, in _call_impl
+    return forward_call(*args, **kwargs)
+  File "/root/miniconda3/envs/ltx/lib/python3.10/site-packages/accelerate/utils/operations.py", line 823, in forward
+    return model_forward(*args, **kwargs)
+  File "/root/miniconda3/envs/ltx/lib/python3.10/site-packages/accelerate/utils/operations.py", line 811, in __call__
+    return convert_to_fp32(self.model_forward(*args, **kwargs))
+  File "/root/miniconda3/envs/ltx/lib/python3.10/site-packages/torch/amp/autocast_mode.py", line 44, in decorate_autocast
+    return func(*args, **kwargs)
+  File "/root/miniconda3/envs/ltx/lib/python3.10/site-packages/peft/peft_model.py", line 921, in forward
+    return self.get_base_model()(*args, **kwargs)
+  File "/root/miniconda3/envs/ltx/lib/python3.10/site-packages/torch/nn/modules/module.py", line 1779, in _wrapped_call_impl
+    return self._call_impl(*args, **kwargs)
+  File "/root/miniconda3/envs/ltx/lib/python3.10/site-packages/torch/nn/modules/module.py", line 1790, in _call_impl
+    return forward_call(*args, **kwargs)
+  File "/data/vjuicefs_ai_camera_jgroup_acadmic/public_data/11194554/WorkSpace/LTX-2/packages/ltx-core/src/ltx_core/model/transformer/model.py", line 510, in forward
+    audio_args = self.audio_args_preprocessor.prepare(audio, video) if audio is not None else None
+  File "/data/vjuicefs_ai_camera_jgroup_acadmic/public_data/11194554/WorkSpace/LTX-2/packages/ltx-core/src/ltx_core/model/transformer/transformer_args.py", line 315, in prepare
+    transformer_args = self.simple_preprocessor.prepare(modality)
+  File "/data/vjuicefs_ai_camera_jgroup_acadmic/public_data/11194554/WorkSpace/LTX-2/packages/ltx-core/src/ltx_core/model/transformer/transformer_args.py", line 220, in prepare
+    x = self.patchify_proj(modality.latent)
+  File "/root/miniconda3/envs/ltx/lib/python3.10/site-packages/torch/nn/modules/module.py", line 1779, in _wrapped_call_impl
+    return self._call_impl(*args, **kwargs)
+  File "/root/miniconda3/envs/ltx/lib/python3.10/site-packages/torch/nn/modules/module.py", line 1790, in _call_impl
+    return forward_call(*args, **kwargs)
+  File "/root/miniconda3/envs/ltx/lib/python3.10/site-packages/torch/nn/modules/linear.py", line 134, in forward
+    return F.linear(input, self.weight, self.bias)
+RuntimeError: mat2 must be a matrix, got 1-D tensor
+[rank4]: Traceback (most recent call last):
+[rank4]:   File "/data/vjuicefs_ai_camera_jgroup_acadmic/public_data/11194554/WorkSpace/LTX-2/packages/ltx-trainer/scripts/train_audio_full.py", line 63, in <module>
+[rank4]:     app()
+[rank4]:   File "/root/miniconda3/envs/ltx/lib/python3.10/site-packages/typer/main.py", line 1152, in __call__
+[rank4]:     raise e
+[rank4]:   File "/root/miniconda3/envs/ltx/lib/python3.10/site-packages/typer/main.py", line 1135, in __call__
+[rank4]:     return get_command(self)(*args, **kwargs)
+[rank4]:   File "/root/miniconda3/envs/ltx/lib/python3.10/site-packages/click/core.py", line 1524, in __call__
+[rank4]:     return self.main(*args, **kwargs)
+[rank4]:   File "/root/miniconda3/envs/ltx/lib/python3.10/site-packages/typer/core.py", line 708, in main
+[rank4]:     return _main(
+[rank4]:   File "/root/miniconda3/envs/ltx/lib/python3.10/site-packages/typer/core.py", line 188, in _main
+[rank4]:     rv = self.invoke(ctx)
+[rank4]:   File "/root/miniconda3/envs/ltx/lib/python3.10/site-packages/click/core.py", line 1308, in invoke
+[rank4]:     return ctx.invoke(self.callback, **ctx.params)
+[rank4]:   File "/root/miniconda3/envs/ltx/lib/python3.10/site-packages/click/core.py", line 877, in invoke
+[rank4]:     return callback(*args, **kwargs)
+[rank4]:   File "/root/miniconda3/envs/ltx/lib/python3.10/site-packages/typer/main.py", line 1514, in wrapper
+[rank4]:     return callback(**use_params)
+[rank4]:   File "/data/vjuicefs_ai_camera_jgroup_acadmic/public_data/11194554/WorkSpace/LTX-2/packages/ltx-trainer/scripts/train_audio_full.py", line 59, in main
+[rank4]:     trainer.train(disable_progress_bars=disable_progress_bars)
+[rank4]:   File "/data/vjuicefs_ai_camera_jgroup_acadmic/public_data/11194554/WorkSpace/LTX-2/packages/ltx-trainer/src/ltx_trainer/trainer_vanilla_base.py", line 198, in train
+[rank4]:     sampled_videos_paths = self._run_validation(progress)
+[rank4]:   File "/data/vjuicefs_ai_camera_jgroup_acadmic/public_data/11194554/WorkSpace/LTX-2/packages/ltx-trainer/src/ltx_trainer/trainer_vanilla_base.py", line 875, in _run_validation
+[rank4]:     sampled = self._validation_runner.run(
+[rank4]:   File "/root/miniconda3/envs/ltx/lib/python3.10/site-packages/torch/utils/_contextlib.py", line 124, in decorate_context
+[rank4]:     return func(*args, **kwargs)
+[rank4]:   File "/data/vjuicefs_ai_camera_jgroup_acadmic/public_data/11194554/WorkSpace/LTX-2/packages/ltx-trainer/src/ltx_trainer/gpu_utils.py", line 62, in wrapper
+[rank4]:     return func(*args, **kwargs)
+[rank4]:   File "/data/vjuicefs_ai_camera_jgroup_acadmic/public_data/11194554/WorkSpace/LTX-2/packages/ltx-trainer/src/ltx_trainer/validation_runner_bakcup.py", line 201, in run
+[rank4]:     video, audio = self._generate_sample(
+[rank4]:   File "/data/vjuicefs_ai_camera_jgroup_acadmic/public_data/11194554/WorkSpace/LTX-2/packages/ltx-trainer/src/ltx_trainer/validation_runner.py", line 447, in _generate_sample
+[rank4]:     return super()._generate_sample(
+[rank4]:   File "/data/vjuicefs_ai_camera_jgroup_acadmic/public_data/11194554/WorkSpace/LTX-2/packages/ltx-trainer/src/ltx_trainer/validation_runner_bakcup.py", line 560, in _generate_sample
+[rank4]:     video_state, audio_state = self._run_denoising(
+[rank4]:   File "/data/vjuicefs_ai_camera_jgroup_acadmic/public_data/11194554/WorkSpace/LTX-2/packages/ltx-trainer/src/ltx_trainer/validation_runner.py", line 642, in _run_denoising
+[rank4]:     positive_video, positive_audio = x0_model(
+[rank4]:   File "/root/miniconda3/envs/ltx/lib/python3.10/site-packages/torch/nn/modules/module.py", line 1779, in _wrapped_call_impl
+[rank4]:     return self._call_impl(*args, **kwargs)
+[rank4]:   File "/root/miniconda3/envs/ltx/lib/python3.10/site-packages/torch/nn/modules/module.py", line 1790, in _call_impl
+[rank4]:     return forward_call(*args, **kwargs)
+[rank4]:   File "/data/vjuicefs_ai_camera_jgroup_acadmic/public_data/11194554/WorkSpace/LTX-2/packages/ltx-core/src/ltx_core/model/transformer/model.py", line 590, in forward
+[rank4]:     vx, ax = self.velocity_model(video, audio, perturbations)
+[rank4]:   File "/root/miniconda3/envs/ltx/lib/python3.10/site-packages/torch/nn/modules/module.py", line 1779, in _wrapped_call_impl
+[rank4]:     return self._call_impl(*args, **kwargs)
+[rank4]:   File "/root/miniconda3/envs/ltx/lib/python3.10/site-packages/torch/nn/modules/module.py", line 1790, in _call_impl
+[rank4]:     return forward_call(*args, **kwargs)
+[rank4]:   File "/root/miniconda3/envs/ltx/lib/python3.10/site-packages/torch/distributed/fsdp/fully_sharded_data_parallel.py", line 857, in forward
+[rank4]:     output = self._fsdp_wrapped_module(*args, **kwargs)
+[rank4]:   File "/root/miniconda3/envs/ltx/lib/python3.10/site-packages/torch/nn/modules/module.py", line 1779, in _wrapped_call_impl
+[rank4]:     return self._call_impl(*args, **kwargs)
+[rank4]:   File "/root/miniconda3/envs/ltx/lib/python3.10/site-packages/torch/nn/modules/module.py", line 1790, in _call_impl
+[rank4]:     return forward_call(*args, **kwargs)
+[rank4]:   File "/root/miniconda3/envs/ltx/lib/python3.10/site-packages/accelerate/utils/operations.py", line 823, in forward
+[rank4]:     return model_forward(*args, **kwargs)
+[rank4]:   File "/root/miniconda3/envs/ltx/lib/python3.10/site-packages/accelerate/utils/operations.py", line 811, in __call__
+[rank4]:     return convert_to_fp32(self.model_forward(*args, **kwargs))
+[rank4]:   File "/root/miniconda3/envs/ltx/lib/python3.10/site-packages/torch/amp/autocast_mode.py", line 44, in decorate_autocast
+[rank4]:     return func(*args, **kwargs)
+[rank4]:   File "/root/miniconda3/envs/ltx/lib/python3.10/site-packages/peft/peft_model.py", line 921, in forward
+[rank4]:     return self.get_base_model()(*args, **kwargs)
+[rank4]:   File "/root/miniconda3/envs/ltx/lib/python3.10/site-packages/torch/nn/modules/module.py", line 1779, in _wrapped_call_impl
+[rank4]:     return self._call_impl(*args, **kwargs)
+[rank4]:   File "/root/miniconda3/envs/ltx/lib/python3.10/site-packages/torch/nn/modules/module.py", line 1790, in _call_impl
+[rank4]:     return forward_call(*args, **kwargs)
+[rank4]:   File "/data/vjuicefs_ai_camera_jgroup_acadmic/public_data/11194554/WorkSpace/LTX-2/packages/ltx-core/src/ltx_core/model/transformer/model.py", line 510, in forward
+[rank4]:     audio_args = self.audio_args_preprocessor.prepare(audio, video) if audio is not None else None
+[rank4]:   File "/data/vjuicefs_ai_camera_jgroup_acadmic/public_data/11194554/WorkSpace/LTX-2/packages/ltx-core/src/ltx_core/model/transformer/transformer_args.py", line 315, in prepare
+[rank4]:     transformer_args = self.simple_preprocessor.prepare(modality)
+[rank4]:   File "/data/vjuicefs_ai_camera_jgroup_acadmic/public_data/11194554/WorkSpace/LTX-2/packages/ltx-core/src/ltx_core/model/transformer/transformer_args.py", line 220, in prepare
+[rank4]:     x = self.patchify_proj(modality.latent)
+[rank4]:   File "/root/miniconda3/envs/ltx/lib/python3.10/site-packages/torch/nn/modules/module.py", line 1779, in _wrapped_call_impl
+[rank4]:     return self._call_impl(*args, **kwargs)
+[rank4]:   File "/root/miniconda3/envs/ltx/lib/python3.10/site-packages/torch/nn/modules/module.py", line 1790, in _call_impl
+[rank4]:     return forward_call(*args, **kwargs)
+[rank4]:   File "/root/miniconda3/envs/ltx/lib/python3.10/site-packages/torch/nn/modules/linear.py", line 134, in forward
+[rank4]:     return F.linear(input, self.weight, self.bias)
+[rank4]: RuntimeError: mat2 must be a matrix, got 1-D tensor
+[rank1]: Traceback (most recent call last):
+[rank1]:   File "/data/vjuicefs_ai_camera_jgroup_acadmic/public_data/11194554/WorkSpace/LTX-2/packages/ltx-trainer/scripts/train_audio_full.py", line 63, in <module>
+[rank1]:     app()
+[rank1]:   File "/root/miniconda3/envs/ltx/lib/python3.10/site-packages/typer/main.py", line 1152, in __call__
+[rank1]:     raise e
+[rank1]:   File "/root/miniconda3/envs/ltx/lib/python3.10/site-packages/typer/main.py", line 1135, in __call__
+[rank1]:     return get_command(self)(*args, **kwargs)
+[rank1]:   File "/root/miniconda3/envs/ltx/lib/python3.10/site-packages/click/core.py", line 1524, in __call__
+[rank1]:     return self.main(*args, **kwargs)
+[rank1]:   File "/root/miniconda3/envs/ltx/lib/python3.10/site-packages/typer/core.py", line 708, in main
+[rank1]:     return _main(
+[rank1]:   File "/root/miniconda3/envs/ltx/lib/python3.10/site-packages/typer/core.py", line 188, in _main
+[rank1]:     rv = self.invoke(ctx)
+[rank1]:   File "/root/miniconda3/envs/ltx/lib/python3.10/site-packages/click/core.py", line 1308, in invoke
+[rank1]:     return ctx.invoke(self.callback, **ctx.params)
+[rank1]:   File "/root/miniconda3/envs/ltx/lib/python3.10/site-packages/click/core.py", line 877, in invoke
+[rank1]:     return callback(*args, **kwargs)
+[rank1]:   File "/root/miniconda3/envs/ltx/lib/python3.10/site-packages/typer/main.py", line 1514, in wrapper
+[rank1]:     return callback(**use_params)
+[rank1]:   File "/data/vjuicefs_ai_camera_jgroup_acadmic/public_data/11194554/WorkSpace/LTX-2/packages/ltx-trainer/scripts/train_audio_full.py", line 59, in main
+[rank1]:     trainer.train(disable_progress_bars=disable_progress_bars)
+[rank1]:   File "/data/vjuicefs_ai_camera_jgroup_acadmic/public_data/11194554/WorkSpace/LTX-2/packages/ltx-trainer/src/ltx_trainer/trainer_vanilla_base.py", line 198, in train
+[rank1]:     sampled_videos_paths = self._run_validation(progress)
+[rank1]:   File "/data/vjuicefs_ai_camera_jgroup_acadmic/public_data/11194554/WorkSpace/LTX-2/packages/ltx-trainer/src/ltx_trainer/trainer_vanilla_base.py", line 875, in _run_validation
+[rank1]:     sampled = self._validation_runner.run(
+[rank1]:   File "/root/miniconda3/envs/ltx/lib/python3.10/site-packages/torch/utils/_contextlib.py", line 124, in decorate_context
+[rank1]:     return func(*args, **kwargs)
+[rank1]:   File "/data/vjuicefs_ai_camera_jgroup_acadmic/public_data/11194554/WorkSpace/LTX-2/packages/ltx-trainer/src/ltx_trainer/gpu_utils.py", line 62, in wrapper
+[rank1]:     return func(*args, **kwargs)
+[rank1]:   File "/data/vjuicefs_ai_camera_jgroup_acadmic/public_data/11194554/WorkSpace/LTX-2/packages/ltx-trainer/src/ltx_trainer/validation_runner_bakcup.py", line 201, in run
+[rank1]:     video, audio = self._generate_sample(
+[rank1]:   File "/data/vjuicefs_ai_camera_jgroup_acadmic/public_data/11194554/WorkSpace/LTX-2/packages/ltx-trainer/src/ltx_trainer/validation_runner.py", line 447, in _generate_sample
+[rank1]:     return super()._generate_sample(
+[rank1]:   File "/data/vjuicefs_ai_camera_jgroup_acadmic/public_data/11194554/WorkSpace/LTX-2/packages/ltx-trainer/src/ltx_trainer/validation_runner_bakcup.py", line 560, in _generate_sample
+[rank1]:     video_state, audio_state = self._run_denoising(
+[rank1]:   File "/data/vjuicefs_ai_camera_jgroup_acadmic/public_data/11194554/WorkSpace/LTX-2/packages/ltx-trainer/src/ltx_trainer/validation_runner.py", line 642, in _run_denoising
+[rank1]:     positive_video, positive_audio = x0_model(
+[rank1]:   File "/root/miniconda3/envs/ltx/lib/python3.10/site-packages/torch/nn/modules/module.py", line 1779, in _wrapped_call_impl
+[rank1]:     return self._call_impl(*args, **kwargs)
+[rank1]:   File "/root/miniconda3/envs/ltx/lib/python3.10/site-packages/torch/nn/modules/module.py", line 1790, in _call_impl
+[rank1]:     return forward_call(*args, **kwargs)
+[rank1]:   File "/data/vjuicefs_ai_camera_jgroup_acadmic/public_data/11194554/WorkSpace/LTX-2/packages/ltx-core/src/ltx_core/model/transformer/model.py", line 590, in forward
+[rank1]:     vx, ax = self.velocity_model(video, audio, perturbations)
+[rank1]:   File "/root/miniconda3/envs/ltx/lib/python3.10/site-packages/torch/nn/modules/module.py", line 1779, in _wrapped_call_impl
+[rank1]:     return self._call_impl(*args, **kwargs)
+[rank1]:   File "/root/miniconda3/envs/ltx/lib/python3.10/site-packages/torch/nn/modules/module.py", line 1790, in _call_impl
+[rank1]:     return forward_call(*args, **kwargs)
+[rank1]:   File "/root/miniconda3/envs/ltx/lib/python3.10/site-packages/torch/distributed/fsdp/fully_sharded_data_parallel.py", line 857, in forward
+[rank1]:     output = self._fsdp_wrapped_module(*args, **kwargs)
+[rank1]:   File "/root/miniconda3/envs/ltx/lib/python3.10/site-packages/torch/nn/modules/module.py", line 1779, in _wrapped_call_impl
+[rank1]:     return self._call_impl(*args, **kwargs)
+[rank1]:   File "/root/miniconda3/envs/ltx/lib/python3.10/site-packages/torch/nn/modules/module.py", line 1790, in _call_impl
+[rank1]:     return forward_call(*args, **kwargs)
+[rank1]:   File "/root/miniconda3/envs/ltx/lib/python3.10/site-packages/accelerate/utils/operations.py", line 823, in forward
+[rank1]:     return model_forward(*args, **kwargs)
+[rank1]:   File "/root/miniconda3/envs/ltx/lib/python3.10/site-packages/accelerate/utils/operations.py", line 811, in __call__
+[rank1]:     return convert_to_fp32(self.model_forward(*args, **kwargs))
+[rank1]:   File "/root/miniconda3/envs/ltx/lib/python3.10/site-packages/torch/amp/autocast_mode.py", line 44, in decorate_autocast
+[rank1]:     return func(*args, **kwargs)
+[rank1]:   File "/root/miniconda3/envs/ltx/lib/python3.10/site-packages/peft/peft_model.py", line 921, in forward
+[rank1]:     return self.get_base_model()(*args, **kwargs)
+[rank1]:   File "/root/miniconda3/envs/ltx/lib/python3.10/site-packages/torch/nn/modules/module.py", line 1779, in _wrapped_call_impl
+[rank1]:     return self._call_impl(*args, **kwargs)
+[rank1]:   File "/root/miniconda3/envs/ltx/lib/python3.10/site-packages/torch/nn/modules/module.py", line 1790, in _call_impl
+[rank1]:     return forward_call(*args, **kwargs)
+[rank1]:   File "/data/vjuicefs_ai_camera_jgroup_acadmic/public_data/11194554/WorkSpace/LTX-2/packages/ltx-core/src/ltx_core/model/transformer/model.py", line 510, in forward
+[rank1]:     audio_args = self.audio_args_preprocessor.prepare(audio, video) if audio is not None else None
+[rank1]:   File "/data/vjuicefs_ai_camera_jgroup_acadmic/public_data/11194554/WorkSpace/LTX-2/packages/ltx-core/src/ltx_core/model/transformer/transformer_args.py", line 315, in prepare
+[rank1]:     transformer_args = self.simple_preprocessor.prepare(modality)
+[rank1]:   File "/data/vjuicefs_ai_camera_jgroup_acadmic/public_data/11194554/WorkSpace/LTX-2/packages/ltx-core/src/ltx_core/model/transformer/transformer_args.py", line 220, in prepare
+[rank1]:     x = self.patchify_proj(modality.latent)
+[rank1]:   File "/root/miniconda3/envs/ltx/lib/python3.10/site-packages/torch/nn/modules/module.py", line 1779, in _wrapped_call_impl
+[rank1]:     return self._call_impl(*args, **kwargs)
+[rank1]:   File "/root/miniconda3/envs/ltx/lib/python3.10/site-packages/torch/nn/modules/module.py", line 1790, in _call_impl
+[rank1]:     return forward_call(*args, **kwargs)
+[rank1]:   File "/root/miniconda3/envs/ltx/lib/python3.10/site-packages/torch/nn/modules/linear.py", line 134, in forward
+[rank1]:     return F.linear(input, self.weight, self.bias)
+[rank1]: RuntimeError: mat2 must be a matrix, got 1-D tensor
+[rank3]: Traceback (most recent call last):
+[rank3]:   File "/data/vjuicefs_ai_camera_jgroup_acadmic/public_data/11194554/WorkSpace/LTX-2/packages/ltx-trainer/scripts/train_audio_full.py", line 63, in <module>
+[rank3]:     app()
+[rank3]:   File "/root/miniconda3/envs/ltx/lib/python3.10/site-packages/typer/main.py", line 1152, in __call__
+[rank3]:     raise e
+[rank3]:   File "/root/miniconda3/envs/ltx/lib/python3.10/site-packages/typer/main.py", line 1135, in __call__
+[rank3]:     return get_command(self)(*args, **kwargs)
+[rank3]:   File "/root/miniconda3/envs/ltx/lib/python3.10/site-packages/click/core.py", line 1524, in __call__
+[rank3]:     return self.main(*args, **kwargs)
+[rank3]:   File "/root/miniconda3/envs/ltx/lib/python3.10/site-packages/typer/core.py", line 708, in main
+[rank3]:     return _main(
+[rank3]:   File "/root/miniconda3/envs/ltx/lib/python3.10/site-packages/typer/core.py", line 188, in _main
+[rank3]:     rv = self.invoke(ctx)
+[rank3]:   File "/root/miniconda3/envs/ltx/lib/python3.10/site-packages/click/core.py", line 1308, in invoke
+[rank3]:     return ctx.invoke(self.callback, **ctx.params)
+[rank3]:   File "/root/miniconda3/envs/ltx/lib/python3.10/site-packages/click/core.py", line 877, in invoke
+[rank3]:     return callback(*args, **kwargs)
+[rank3]:   File "/root/miniconda3/envs/ltx/lib/python3.10/site-packages/typer/main.py", line 1514, in wrapper
+[rank3]:     return callback(**use_params)
+[rank3]:   File "/data/vjuicefs_ai_camera_jgroup_acadmic/public_data/11194554/WorkSpace/LTX-2/packages/ltx-trainer/scripts/train_audio_full.py", line 59, in main
+[rank3]:     trainer.train(disable_progress_bars=disable_progress_bars)
+[rank3]:   File "/data/vjuicefs_ai_camera_jgroup_acadmic/public_data/11194554/WorkSpace/LTX-2/packages/ltx-trainer/src/ltx_trainer/trainer_vanilla_base.py", line 198, in train
+[rank3]:     sampled_videos_paths = self._run_validation(progress)
+[rank3]:   File "/data/vjuicefs_ai_camera_jgroup_acadmic/public_data/11194554/WorkSpace/LTX-2/packages/ltx-trainer/src/ltx_trainer/trainer_vanilla_base.py", line 875, in _run_validation
+[rank3]:     sampled = self._validation_runner.run(
+[rank3]:   File "/root/miniconda3/envs/ltx/lib/python3.10/site-packages/torch/utils/_contextlib.py", line 124, in decorate_context
+[rank3]:     return func(*args, **kwargs)
+[rank3]:   File "/data/vjuicefs_ai_camera_jgroup_acadmic/public_data/11194554/WorkSpace/LTX-2/packages/ltx-trainer/src/ltx_trainer/gpu_utils.py", line 62, in wrapper
+[rank3]:     return func(*args, **kwargs)
+[rank3]:   File "/data/vjuicefs_ai_camera_jgroup_acadmic/public_data/11194554/WorkSpace/LTX-2/packages/ltx-trainer/src/ltx_trainer/validation_runner_bakcup.py", line 201, in run
+[rank3]:     video, audio = self._generate_sample(
+[rank3]:   File "/data/vjuicefs_ai_camera_jgroup_acadmic/public_data/11194554/WorkSpace/LTX-2/packages/ltx-trainer/src/ltx_trainer/validation_runner.py", line 447, in _generate_sample
+[rank3]:     return super()._generate_sample(
+[rank3]:   File "/data/vjuicefs_ai_camera_jgroup_acadmic/public_data/11194554/WorkSpace/LTX-2/packages/ltx-trainer/src/ltx_trainer/validation_runner_bakcup.py", line 560, in _generate_sample
+[rank3]:     video_state, audio_state = self._run_denoising(
+[rank3]:   File "/data/vjuicefs_ai_camera_jgroup_acadmic/public_data/11194554/WorkSpace/LTX-2/packages/ltx-trainer/src/ltx_trainer/validation_runner.py", line 642, in _run_denoising
+[rank3]:     positive_video, positive_audio = x0_model(
+[rank3]:   File "/root/miniconda3/envs/ltx/lib/python3.10/site-packages/torch/nn/modules/module.py", line 1779, in _wrapped_call_impl
+[rank3]:     return self._call_impl(*args, **kwargs)
+[rank3]:   File "/root/miniconda3/envs/ltx/lib/python3.10/site-packages/torch/nn/modules/module.py", line 1790, in _call_impl
+[rank3]:     return forward_call(*args, **kwargs)
+[rank3]:   File "/data/vjuicefs_ai_camera_jgroup_acadmic/public_data/11194554/WorkSpace/LTX-2/packages/ltx-core/src/ltx_core/model/transformer/model.py", line 590, in forward
+[rank3]:     vx, ax = self.velocity_model(video, audio, perturbations)
+[rank3]:   File "/root/miniconda3/envs/ltx/lib/python3.10/site-packages/torch/nn/modules/module.py", line 1779, in _wrapped_call_impl
+[rank3]:     return self._call_impl(*args, **kwargs)
+[rank3]:   File "/root/miniconda3/envs/ltx/lib/python3.10/site-packages/torch/nn/modules/module.py", line 1790, in _call_impl
+[rank3]:     return forward_call(*args, **kwargs)
+[rank3]:   File "/root/miniconda3/envs/ltx/lib/python3.10/site-packages/torch/distributed/fsdp/fully_sharded_data_parallel.py", line 857, in forward
+[rank3]:     output = self._fsdp_wrapped_module(*args, **kwargs)
+[rank3]:   File "/root/miniconda3/envs/ltx/lib/python3.10/site-packages/torch/nn/modules/module.py", line 1779, in _wrapped_call_impl
+[rank3]:     return self._call_impl(*args, **kwargs)
+[rank3]:   File "/root/miniconda3/envs/ltx/lib/python3.10/site-packages/torch/nn/modules/module.py", line 1790, in _call_impl
+[rank3]:     return forward_call(*args, **kwargs)
+[rank3]:   File "/root/miniconda3/envs/ltx/lib/python3.10/site-packages/accelerate/utils/operations.py", line 823, in forward
+[rank3]:     return model_forward(*args, **kwargs)
+[rank3]:   File "/root/miniconda3/envs/ltx/lib/python3.10/site-packages/accelerate/utils/operations.py", line 811, in __call__
+[rank3]:     return convert_to_fp32(self.model_forward(*args, **kwargs))
+[rank3]:   File "/root/miniconda3/envs/ltx/lib/python3.10/site-packages/torch/amp/autocast_mode.py", line 44, in decorate_autocast
+[rank3]:     return func(*args, **kwargs)
+[rank3]:   File "/root/miniconda3/envs/ltx/lib/python3.10/site-packages/peft/peft_model.py", line 921, in forward
+[rank3]:     return self.get_base_model()(*args, **kwargs)
+[rank3]:   File "/root/miniconda3/envs/ltx/lib/python3.10/site-packages/torch/nn/modules/module.py", line 1779, in _wrapped_call_impl
+[rank3]:     return self._call_impl(*args, **kwargs)
+[rank3]:   File "/root/miniconda3/envs/ltx/lib/python3.10/site-packages/torch/nn/modules/module.py", line 1790, in _call_impl
+[rank3]:     return forward_call(*args, **kwargs)
+[rank3]:   File "/data/vjuicefs_ai_camera_jgroup_acadmic/public_data/11194554/WorkSpace/LTX-2/packages/ltx-core/src/ltx_core/model/transformer/model.py", line 510, in forward
+[rank3]:     audio_args = self.audio_args_preprocessor.prepare(audio, video) if audio is not None else None
+[rank3]:   File "/data/vjuicefs_ai_camera_jgroup_acadmic/public_data/11194554/WorkSpace/LTX-2/packages/ltx-core/src/ltx_core/model/transformer/transformer_args.py", line 315, in prepare
+[rank3]:     transformer_args = self.simple_preprocessor.prepare(modality)
+[rank3]:   File "/data/vjuicefs_ai_camera_jgroup_acadmic/public_data/11194554/WorkSpace/LTX-2/packages/ltx-core/src/ltx_core/model/transformer/transformer_args.py", line 220, in prepare
+[rank3]:     x = self.patchify_proj(modality.latent)
+[rank3]:   File "/root/miniconda3/envs/ltx/lib/python3.10/site-packages/torch/nn/modules/module.py", line 1779, in _wrapped_call_impl
+[rank3]:     return self._call_impl(*args, **kwargs)
+[rank3]:   File "/root/miniconda3/envs/ltx/lib/python3.10/site-packages/torch/nn/modules/module.py", line 1790, in _call_impl
+[rank3]:     return forward_call(*args, **kwargs)
+[rank3]:   File "/root/miniconda3/envs/ltx/lib/python3.10/site-packages/torch/nn/modules/linear.py", line 134, in forward
+[rank3]:     return F.linear(input, self.weight, self.bias)
+[rank3]: RuntimeError: mat2 must be a matrix, got 1-D tensor
+[rank2]: Traceback (most recent call last):
+[rank2]:   File "/data/vjuicefs_ai_camera_jgroup_acadmic/public_data/11194554/WorkSpace/LTX-2/packages/ltx-trainer/scripts/train_audio_full.py", line 63, in <module>
+[rank2]:     app()
+[rank2]:   File "/root/miniconda3/envs/ltx/lib/python3.10/site-packages/typer/main.py", line 1152, in __call__
+[rank2]:     raise e
+[rank2]:   File "/root/miniconda3/envs/ltx/lib/python3.10/site-packages/typer/main.py", line 1135, in __call__
+[rank2]:     return get_command(self)(*args, **kwargs)
+[rank2]:   File "/root/miniconda3/envs/ltx/lib/python3.10/site-packages/click/core.py", line 1524, in __call__
+[rank2]:     return self.main(*args, **kwargs)
+[rank2]:   File "/root/miniconda3/envs/ltx/lib/python3.10/site-packages/typer/core.py", line 708, in main
+[rank2]:     return _main(
+[rank2]:   File "/root/miniconda3/envs/ltx/lib/python3.10/site-packages/typer/core.py", line 188, in _main
+[rank2]:     rv = self.invoke(ctx)
+[rank2]:   File "/root/miniconda3/envs/ltx/lib/python3.10/site-packages/click/core.py", line 1308, in invoke
+[rank2]:     return ctx.invoke(self.callback, **ctx.params)
+[rank2]:   File "/root/miniconda3/envs/ltx/lib/python3.10/site-packages/click/core.py", line 877, in invoke
+[rank2]:     return callback(*args, **kwargs)
+[rank2]:   File "/root/miniconda3/envs/ltx/lib/python3.10/site-packages/typer/main.py", line 1514, in wrapper
+[rank2]:     return callback(**use_params)
+[rank2]:   File "/data/vjuicefs_ai_camera_jgroup_acadmic/public_data/11194554/WorkSpace/LTX-2/packages/ltx-trainer/scripts/train_audio_full.py", line 59, in main
+[rank2]:     trainer.train(disable_progress_bars=disable_progress_bars)
+[rank2]:   File "/data/vjuicefs_ai_camera_jgroup_acadmic/public_data/11194554/WorkSpace/LTX-2/packages/ltx-trainer/src/ltx_trainer/trainer_vanilla_base.py", line 198, in train
+[rank2]:     sampled_videos_paths = self._run_validation(progress)
+[rank2]:   File "/data/vjuicefs_ai_camera_jgroup_acadmic/public_data/11194554/WorkSpace/LTX-2/packages/ltx-trainer/src/ltx_trainer/trainer_vanilla_base.py", line 875, in _run_validation
+[rank2]:     sampled = self._validation_runner.run(
+[rank2]:   File "/root/miniconda3/envs/ltx/lib/python3.10/site-packages/torch/utils/_contextlib.py", line 124, in decorate_context
+[rank2]:     return func(*args, **kwargs)
+[rank2]:   File "/data/vjuicefs_ai_camera_jgroup_acadmic/public_data/11194554/WorkSpace/LTX-2/packages/ltx-trainer/src/ltx_trainer/gpu_utils.py", line 62, in wrapper
+[rank2]:     return func(*args, **kwargs)
+[rank2]:   File "/data/vjuicefs_ai_camera_jgroup_acadmic/public_data/11194554/WorkSpace/LTX-2/packages/ltx-trainer/src/ltx_trainer/validation_runner_bakcup.py", line 201, in run
+[rank2]:     video, audio = self._generate_sample(
+[rank2]:   File "/data/vjuicefs_ai_camera_jgroup_acadmic/public_data/11194554/WorkSpace/LTX-2/packages/ltx-trainer/src/ltx_trainer/validation_runner.py", line 447, in _generate_sample
+[rank2]:     return super()._generate_sample(
+[rank2]:   File "/data/vjuicefs_ai_camera_jgroup_acadmic/public_data/11194554/WorkSpace/LTX-2/packages/ltx-trainer/src/ltx_trainer/validation_runner_bakcup.py", line 560, in _generate_sample
+[rank2]:     video_state, audio_state = self._run_denoising(
+[rank2]:   File "/data/vjuicefs_ai_camera_jgroup_acadmic/public_data/11194554/WorkSpace/LTX-2/packages/ltx-trainer/src/ltx_trainer/validation_runner.py", line 642, in _run_denoising
+[rank2]:     positive_video, positive_audio = x0_model(
+[rank2]:   File "/root/miniconda3/envs/ltx/lib/python3.10/site-packages/torch/nn/modules/module.py", line 1779, in _wrapped_call_impl
+[rank2]:     return self._call_impl(*args, **kwargs)
+[rank2]:   File "/root/miniconda3/envs/ltx/lib/python3.10/site-packages/torch/nn/modules/module.py", line 1790, in _call_impl
+[rank2]:     return forward_call(*args, **kwargs)
+[rank2]:   File "/data/vjuicefs_ai_camera_jgroup_acadmic/public_data/11194554/WorkSpace/LTX-2/packages/ltx-core/src/ltx_core/model/transformer/model.py", line 590, in forward
+[rank2]:     vx, ax = self.velocity_model(video, audio, perturbations)
+[rank2]:   File "/root/miniconda3/envs/ltx/lib/python3.10/site-packages/torch/nn/modules/module.py", line 1779, in _wrapped_call_impl
+[rank2]:     return self._call_impl(*args, **kwargs)
+[rank2]:   File "/root/miniconda3/envs/ltx/lib/python3.10/site-packages/torch/nn/modules/module.py", line 1790, in _call_impl
+[rank2]:     return forward_call(*args, **kwargs)
+[rank2]:   File "/root/miniconda3/envs/ltx/lib/python3.10/site-packages/torch/distributed/fsdp/fully_sharded_data_parallel.py", line 857, in forward
+[rank2]:     output = self._fsdp_wrapped_module(*args, **kwargs)
+[rank2]:   File "/root/miniconda3/envs/ltx/lib/python3.10/site-packages/torch/nn/modules/module.py", line 1779, in _wrapped_call_impl
+[rank2]:     return self._call_impl(*args, **kwargs)
+[rank2]:   File "/root/miniconda3/envs/ltx/lib/python3.10/site-packages/torch/nn/modules/module.py", line 1790, in _call_impl
+[rank2]:     return forward_call(*args, **kwargs)
+[rank2]:   File "/root/miniconda3/envs/ltx/lib/python3.10/site-packages/accelerate/utils/operations.py", line 823, in forward
+[rank2]:     return model_forward(*args, **kwargs)
+[rank2]:   File "/root/miniconda3/envs/ltx/lib/python3.10/site-packages/accelerate/utils/operations.py", line 811, in __call__
+[rank2]:     return convert_to_fp32(self.model_forward(*args, **kwargs))
+[rank2]:   File "/root/miniconda3/envs/ltx/lib/python3.10/site-packages/torch/amp/autocast_mode.py", line 44, in decorate_autocast
+[rank2]:     return func(*args, **kwargs)
+[rank2]:   File "/root/miniconda3/envs/ltx/lib/python3.10/site-packages/peft/peft_model.py", line 921, in forward
+[rank2]:     return self.get_base_model()(*args, **kwargs)
+[rank2]:   File "/root/miniconda3/envs/ltx/lib/python3.10/site-packages/torch/nn/modules/module.py", line 1779, in _wrapped_call_impl
+[rank2]:     return self._call_impl(*args, **kwargs)
+[rank2]:   File "/root/miniconda3/envs/ltx/lib/python3.10/site-packages/torch/nn/modules/module.py", line 1790, in _call_impl
+[rank2]:     return forward_call(*args, **kwargs)
+[rank2]:   File "/data/vjuicefs_ai_camera_jgroup_acadmic/public_data/11194554/WorkSpace/LTX-2/packages/ltx-core/src/ltx_core/model/transformer/model.py", line 510, in forward
+[rank2]:     audio_args = self.audio_args_preprocessor.prepare(audio, video) if audio is not None else None
+[rank2]:   File "/data/vjuicefs_ai_camera_jgroup_acadmic/public_data/11194554/WorkSpace/LTX-2/packages/ltx-core/src/ltx_core/model/transformer/transformer_args.py", line 315, in prepare
+[rank2]:     transformer_args = self.simple_preprocessor.prepare(modality)
+[rank2]:   File "/data/vjuicefs_ai_camera_jgroup_acadmic/public_data/11194554/WorkSpace/LTX-2/packages/ltx-core/src/ltx_core/model/transformer/transformer_args.py", line 220, in prepare
+[rank2]:     x = self.patchify_proj(modality.latent)
+[rank2]:   File "/root/miniconda3/envs/ltx/lib/python3.10/site-packages/torch/nn/modules/module.py", line 1779, in _wrapped_call_impl
+[rank2]:     return self._call_impl(*args, **kwargs)
+[rank2]:   File "/root/miniconda3/envs/ltx/lib/python3.10/site-packages/torch/nn/modules/module.py", line 1790, in _call_impl
+[rank2]:     return forward_call(*args, **kwargs)
+[rank2]:   File "/root/miniconda3/envs/ltx/lib/python3.10/site-packages/torch/nn/modules/linear.py", line 134, in forward
+[rank2]:     return F.linear(input, self.weight, self.bias)
+[rank2]: RuntimeError: mat2 must be a matrix, got 1-D tensor
+[rank6]: Traceback (most recent call last):
+[rank6]:   File "/data/vjuicefs_ai_camera_jgroup_acadmic/public_data/11194554/WorkSpace/LTX-2/packages/ltx-trainer/scripts/train_audio_full.py", line 63, in <module>
+[rank6]:     app()
+[rank6]:   File "/root/miniconda3/envs/ltx/lib/python3.10/site-packages/typer/main.py", line 1152, in __call__
+[rank6]:     raise e
+[rank6]:   File "/root/miniconda3/envs/ltx/lib/python3.10/site-packages/typer/main.py", line 1135, in __call__
+[rank6]:     return get_command(self)(*args, **kwargs)
+[rank6]:   File "/root/miniconda3/envs/ltx/lib/python3.10/site-packages/click/core.py", line 1524, in __call__
+[rank6]:     return self.main(*args, **kwargs)
+[rank6]:   File "/root/miniconda3/envs/ltx/lib/python3.10/site-packages/typer/core.py", line 708, in main
+[rank6]:     return _main(
+[rank6]:   File "/root/miniconda3/envs/ltx/lib/python3.10/site-packages/typer/core.py", line 188, in _main
+[rank6]:     rv = self.invoke(ctx)
+[rank6]:   File "/root/miniconda3/envs/ltx/lib/python3.10/site-packages/click/core.py", line 1308, in invoke
+[rank6]:     return ctx.invoke(self.callback, **ctx.params)
+[rank6]:   File "/root/miniconda3/envs/ltx/lib/python3.10/site-packages/click/core.py", line 877, in invoke
+[rank6]:     return callback(*args, **kwargs)
+[rank6]:   File "/root/miniconda3/envs/ltx/lib/python3.10/site-packages/typer/main.py", line 1514, in wrapper
+[rank6]:     return callback(**use_params)
+[rank6]:   File "/data/vjuicefs_ai_camera_jgroup_acadmic/public_data/11194554/WorkSpace/LTX-2/packages/ltx-trainer/scripts/train_audio_full.py", line 59, in main
+[rank6]:     trainer.train(disable_progress_bars=disable_progress_bars)
+[rank6]:   File "/data/vjuicefs_ai_camera_jgroup_acadmic/public_data/11194554/WorkSpace/LTX-2/packages/ltx-trainer/src/ltx_trainer/trainer_vanilla_base.py", line 198, in train
+[rank6]:     sampled_videos_paths = self._run_validation(progress)
+[rank6]:   File "/data/vjuicefs_ai_camera_jgroup_acadmic/public_data/11194554/WorkSpace/LTX-2/packages/ltx-trainer/src/ltx_trainer/trainer_vanilla_base.py", line 875, in _run_validation
+[rank6]:     sampled = self._validation_runner.run(
+[rank6]:   File "/root/miniconda3/envs/ltx/lib/python3.10/site-packages/torch/utils/_contextlib.py", line 124, in decorate_context
+[rank6]:     return func(*args, **kwargs)
+[rank6]:   File "/data/vjuicefs_ai_camera_jgroup_acadmic/public_data/11194554/WorkSpace/LTX-2/packages/ltx-trainer/src/ltx_trainer/gpu_utils.py", line 62, in wrapper
+[rank6]:     return func(*args, **kwargs)
+[rank6]:   File "/data/vjuicefs_ai_camera_jgroup_acadmic/public_data/11194554/WorkSpace/LTX-2/packages/ltx-trainer/src/ltx_trainer/validation_runner_bakcup.py", line 201, in run
+[rank6]:     video, audio = self._generate_sample(
+[rank6]:   File "/data/vjuicefs_ai_camera_jgroup_acadmic/public_data/11194554/WorkSpace/LTX-2/packages/ltx-trainer/src/ltx_trainer/validation_runner.py", line 447, in _generate_sample
+[rank6]:     return super()._generate_sample(
+[rank6]:   File "/data/vjuicefs_ai_camera_jgroup_acadmic/public_data/11194554/WorkSpace/LTX-2/packages/ltx-trainer/src/ltx_trainer/validation_runner_bakcup.py", line 560, in _generate_sample
+[rank6]:     video_state, audio_state = self._run_denoising(
+[rank6]:   File "/data/vjuicefs_ai_camera_jgroup_acadmic/public_data/11194554/WorkSpace/LTX-2/packages/ltx-trainer/src/ltx_trainer/validation_runner.py", line 642, in _run_denoising
+[rank6]:     positive_video, positive_audio = x0_model(
+[rank6]:   File "/root/miniconda3/envs/ltx/lib/python3.10/site-packages/torch/nn/modules/module.py", line 1779, in _wrapped_call_impl
+[rank6]:     return self._call_impl(*args, **kwargs)
+[rank6]:   File "/root/miniconda3/envs/ltx/lib/python3.10/site-packages/torch/nn/modules/module.py", line 1790, in _call_impl
+[rank6]:     return forward_call(*args, **kwargs)
+[rank6]:   File "/data/vjuicefs_ai_camera_jgroup_acadmic/public_data/11194554/WorkSpace/LTX-2/packages/ltx-core/src/ltx_core/model/transformer/model.py", line 590, in forward
+[rank6]:     vx, ax = self.velocity_model(video, audio, perturbations)
+[rank6]:   File "/root/miniconda3/envs/ltx/lib/python3.10/site-packages/torch/nn/modules/module.py", line 1779, in _wrapped_call_impl
+[rank6]:     return self._call_impl(*args, **kwargs)
+[rank6]:   File "/root/miniconda3/envs/ltx/lib/python3.10/site-packages/torch/nn/modules/module.py", line 1790, in _call_impl
+[rank6]:     return forward_call(*args, **kwargs)
+[rank6]:   File "/root/miniconda3/envs/ltx/lib/python3.10/site-packages/torch/distributed/fsdp/fully_sharded_data_parallel.py", line 857, in forward
+[rank6]:     output = self._fsdp_wrapped_module(*args, **kwargs)
+[rank6]:   File "/root/miniconda3/envs/ltx/lib/python3.10/site-packages/torch/nn/modules/module.py", line 1779, in _wrapped_call_impl
+[rank6]:     return self._call_impl(*args, **kwargs)
+[rank6]:   File "/root/miniconda3/envs/ltx/lib/python3.10/site-packages/torch/nn/modules/module.py", line 1790, in _call_impl
+[rank6]:     return forward_call(*args, **kwargs)
+[rank6]:   File "/root/miniconda3/envs/ltx/lib/python3.10/site-packages/accelerate/utils/operations.py", line 823, in forward
+[rank6]:     return model_forward(*args, **kwargs)
+[rank6]:   File "/root/miniconda3/envs/ltx/lib/python3.10/site-packages/accelerate/utils/operations.py", line 811, in __call__
+[rank6]:     return convert_to_fp32(self.model_forward(*args, **kwargs))
+[rank6]:   File "/root/miniconda3/envs/ltx/lib/python3.10/site-packages/torch/amp/autocast_mode.py", line 44, in decorate_autocast
+[rank6]:     return func(*args, **kwargs)
+[rank6]:   File "/root/miniconda3/envs/ltx/lib/python3.10/site-packages/peft/peft_model.py", line 921, in forward
+[rank6]:     return self.get_base_model()(*args, **kwargs)
+[rank6]:   File "/root/miniconda3/envs/ltx/lib/python3.10/site-packages/torch/nn/modules/module.py", line 1779, in _wrapped_call_impl
+[rank6]:     return self._call_impl(*args, **kwargs)
+[rank6]:   File "/root/miniconda3/envs/ltx/lib/python3.10/site-packages/torch/nn/modules/module.py", line 1790, in _call_impl
+[rank6]:     return forward_call(*args, **kwargs)
+[rank6]:   File "/data/vjuicefs_ai_camera_jgroup_acadmic/public_data/11194554/WorkSpace/LTX-2/packages/ltx-core/src/ltx_core/model/transformer/model.py", line 510, in forward
+[rank6]:     audio_args = self.audio_args_preprocessor.prepare(audio, video) if audio is not None else None
+[rank6]:   File "/data/vjuicefs_ai_camera_jgroup_acadmic/public_data/11194554/WorkSpace/LTX-2/packages/ltx-core/src/ltx_core/model/transformer/transformer_args.py", line 315, in prepare
+[rank6]:     transformer_args = self.simple_preprocessor.prepare(modality)
+[rank6]:   File "/data/vjuicefs_ai_camera_jgroup_acadmic/public_data/11194554/WorkSpace/LTX-2/packages/ltx-core/src/ltx_core/model/transformer/transformer_args.py", line 220, in prepare
+[rank6]:     x = self.patchify_proj(modality.latent)
+[rank6]:   File "/root/miniconda3/envs/ltx/lib/python3.10/site-packages/torch/nn/modules/module.py", line 1779, in _wrapped_call_impl
+[rank6]:     return self._call_impl(*args, **kwargs)
+[rank6]:   File "/root/miniconda3/envs/ltx/lib/python3.10/site-packages/torch/nn/modules/module.py", line 1790, in _call_impl
+[rank6]:     return forward_call(*args, **kwargs)
+[rank6]:   File "/root/miniconda3/envs/ltx/lib/python3.10/site-packages/torch/nn/modules/linear.py", line 134, in forward
+[rank6]:     return F.linear(input, self.weight, self.bias)
+[rank6]: RuntimeError: mat2 must be a matrix, got 1-D tensor
+[rank7]: Traceback (most recent call last):
+[rank7]:   File "/data/vjuicefs_ai_camera_jgroup_acadmic/public_data/11194554/WorkSpace/LTX-2/packages/ltx-trainer/scripts/train_audio_full.py", line 63, in <module>
+[rank7]:     app()
+[rank7]:   File "/root/miniconda3/envs/ltx/lib/python3.10/site-packages/typer/main.py", line 1152, in __call__
+[rank7]:     raise e
+[rank7]:   File "/root/miniconda3/envs/ltx/lib/python3.10/site-packages/typer/main.py", line 1135, in __call__
+[rank7]:     return get_command(self)(*args, **kwargs)
+[rank7]:   File "/root/miniconda3/envs/ltx/lib/python3.10/site-packages/click/core.py", line 1524, in __call__
+[rank7]:     return self.main(*args, **kwargs)
+[rank7]:   File "/root/miniconda3/envs/ltx/lib/python3.10/site-packages/typer/core.py", line 708, in main
+[rank7]:     return _main(
+[rank7]:   File "/root/miniconda3/envs/ltx/lib/python3.10/site-packages/typer/core.py", line 188, in _main
+[rank7]:     rv = self.invoke(ctx)
+[rank7]:   File "/root/miniconda3/envs/ltx/lib/python3.10/site-packages/click/core.py", line 1308, in invoke
+[rank7]:     return ctx.invoke(self.callback, **ctx.params)
+[rank7]:   File "/root/miniconda3/envs/ltx/lib/python3.10/site-packages/click/core.py", line 877, in invoke
+[rank7]:     return callback(*args, **kwargs)
+[rank7]:   File "/root/miniconda3/envs/ltx/lib/python3.10/site-packages/typer/main.py", line 1514, in wrapper
+[rank7]:     return callback(**use_params)
+[rank7]:   File "/data/vjuicefs_ai_camera_jgroup_acadmic/public_data/11194554/WorkSpace/LTX-2/packages/ltx-trainer/scripts/train_audio_full.py", line 59, in main
+[rank7]:     trainer.train(disable_progress_bars=disable_progress_bars)
+[rank7]:   File "/data/vjuicefs_ai_camera_jgroup_acadmic/public_data/11194554/WorkSpace/LTX-2/packages/ltx-trainer/src/ltx_trainer/trainer_vanilla_base.py", line 198, in train
+[rank7]:     sampled_videos_paths = self._run_validation(progress)
+[rank7]:   File "/data/vjuicefs_ai_camera_jgroup_acadmic/public_data/11194554/WorkSpace/LTX-2/packages/ltx-trainer/src/ltx_trainer/trainer_vanilla_base.py", line 875, in _run_validation
+[rank7]:     sampled = self._validation_runner.run(
+[rank7]:   File "/root/miniconda3/envs/ltx/lib/python3.10/site-packages/torch/utils/_contextlib.py", line 124, in decorate_context
+[rank7]:     return func(*args, **kwargs)
+[rank7]:   File "/data/vjuicefs_ai_camera_jgroup_acadmic/public_data/11194554/WorkSpace/LTX-2/packages/ltx-trainer/src/ltx_trainer/gpu_utils.py", line 62, in wrapper
+[rank7]:     return func(*args, **kwargs)
+[rank7]:   File "/data/vjuicefs_ai_camera_jgroup_acadmic/public_data/11194554/WorkSpace/LTX-2/packages/ltx-trainer/src/ltx_trainer/validation_runner_bakcup.py", line 201, in run
+[rank7]:     video, audio = self._generate_sample(
+[rank7]:   File "/data/vjuicefs_ai_camera_jgroup_acadmic/public_data/11194554/WorkSpace/LTX-2/packages/ltx-trainer/src/ltx_trainer/validation_runner.py", line 447, in _generate_sample
+[rank7]:     return super()._generate_sample(
+[rank7]:   File "/data/vjuicefs_ai_camera_jgroup_acadmic/public_data/11194554/WorkSpace/LTX-2/packages/ltx-trainer/src/ltx_trainer/validation_runner_bakcup.py", line 560, in _generate_sample
+[rank7]:     video_state, audio_state = self._run_denoising(
+[rank7]:   File "/data/vjuicefs_ai_camera_jgroup_acadmic/public_data/11194554/WorkSpace/LTX-2/packages/ltx-trainer/src/ltx_trainer/validation_runner.py", line 642, in _run_denoising
+[rank7]:     positive_video, positive_audio = x0_model(
+[rank7]:   File "/root/miniconda3/envs/ltx/lib/python3.10/site-packages/torch/nn/modules/module.py", line 1779, in _wrapped_call_impl
+[rank7]:     return self._call_impl(*args, **kwargs)
+[rank7]:   File "/root/miniconda3/envs/ltx/lib/python3.10/site-packages/torch/nn/modules/module.py", line 1790, in _call_impl
+[rank7]:     return forward_call(*args, **kwargs)
+[rank7]:   File "/data/vjuicefs_ai_camera_jgroup_acadmic/public_data/11194554/WorkSpace/LTX-2/packages/ltx-core/src/ltx_core/model/transformer/model.py", line 590, in forward
+[rank7]:     vx, ax = self.velocity_model(video, audio, perturbations)
+[rank7]:   File "/root/miniconda3/envs/ltx/lib/python3.10/site-packages/torch/nn/modules/module.py", line 1779, in _wrapped_call_impl
+[rank7]:     return self._call_impl(*args, **kwargs)
+[rank7]:   File "/root/miniconda3/envs/ltx/lib/python3.10/site-packages/torch/nn/modules/module.py", line 1790, in _call_impl
+[rank7]:     return forward_call(*args, **kwargs)
+[rank7]:   File "/root/miniconda3/envs/ltx/lib/python3.10/site-packages/torch/distributed/fsdp/fully_sharded_data_parallel.py", line 857, in forward
+[rank7]:     output = self._fsdp_wrapped_module(*args, **kwargs)
+[rank7]:   File "/root/miniconda3/envs/ltx/lib/python3.10/site-packages/torch/nn/modules/module.py", line 1779, in _wrapped_call_impl
+[rank7]:     return self._call_impl(*args, **kwargs)
+[rank7]:   File "/root/miniconda3/envs/ltx/lib/python3.10/site-packages/torch/nn/modules/module.py", line 1790, in _call_impl
+[rank7]:     return forward_call(*args, **kwargs)
+[rank7]:   File "/root/miniconda3/envs/ltx/lib/python3.10/site-packages/accelerate/utils/operations.py", line 823, in forward
+[rank7]:     return model_forward(*args, **kwargs)
+[rank7]:   File "/root/miniconda3/envs/ltx/lib/python3.10/site-packages/accelerate/utils/operations.py", line 811, in __call__
+[rank7]:     return convert_to_fp32(self.model_forward(*args, **kwargs))
+[rank7]:   File "/root/miniconda3/envs/ltx/lib/python3.10/site-packages/torch/amp/autocast_mode.py", line 44, in decorate_autocast
+[rank7]:     return func(*args, **kwargs)
+[rank7]:   File "/root/miniconda3/envs/ltx/lib/python3.10/site-packages/peft/peft_model.py", line 921, in forward
+[rank7]:     return self.get_base_model()(*args, **kwargs)
+[rank7]:   File "/root/miniconda3/envs/ltx/lib/python3.10/site-packages/torch/nn/modules/module.py", line 1779, in _wrapped_call_impl
+[rank7]:     return self._call_impl(*args, **kwargs)
+[rank7]:   File "/root/miniconda3/envs/ltx/lib/python3.10/site-packages/torch/nn/modules/module.py", line 1790, in _call_impl
+[rank7]:     return forward_call(*args, **kwargs)
+[rank7]:   File "/data/vjuicefs_ai_camera_jgroup_acadmic/public_data/11194554/WorkSpace/LTX-2/packages/ltx-core/src/ltx_core/model/transformer/model.py", line 510, in forward
+[rank7]:     audio_args = self.audio_args_preprocessor.prepare(audio, video) if audio is not None else None
+[rank7]:   File "/data/vjuicefs_ai_camera_jgroup_acadmic/public_data/11194554/WorkSpace/LTX-2/packages/ltx-core/src/ltx_core/model/transformer/transformer_args.py", line 315, in prepare
+[rank7]:     transformer_args = self.simple_preprocessor.prepare(modality)
+[rank7]:   File "/data/vjuicefs_ai_camera_jgroup_acadmic/public_data/11194554/WorkSpace/LTX-2/packages/ltx-core/src/ltx_core/model/transformer/transformer_args.py", line 220, in prepare
+[rank7]:     x = self.patchify_proj(modality.latent)
+[rank7]:   File "/root/miniconda3/envs/ltx/lib/python3.10/site-packages/torch/nn/modules/module.py", line 1779, in _wrapped_call_impl
+[rank7]:     return self._call_impl(*args, **kwargs)
+[rank7]:   File "/root/miniconda3/envs/ltx/lib/python3.10/site-packages/torch/nn/modules/module.py", line 1790, in _call_impl
+[rank7]:     return forward_call(*args, **kwargs)
+[rank7]:   File "/root/miniconda3/envs/ltx/lib/python3.10/site-packages/torch/nn/modules/linear.py", line 134, in forward
+[rank7]:     return F.linear(input, self.weight, self.bias)
+[rank7]: RuntimeError: mat2 must be a matrix, got 1-D tensor
+[rank5]: Traceback (most recent call last):
+[rank5]:   File "/data/vjuicefs_ai_camera_jgroup_acadmic/public_data/11194554/WorkSpace/LTX-2/packages/ltx-trainer/scripts/train_audio_full.py", line 63, in <module>
+[rank5]:     app()
+[rank5]:   File "/root/miniconda3/envs/ltx/lib/python3.10/site-packages/typer/main.py", line 1152, in __call__
+[rank5]:     raise e
+[rank5]:   File "/root/miniconda3/envs/ltx/lib/python3.10/site-packages/typer/main.py", line 1135, in __call__
+[rank5]:     return get_command(self)(*args, **kwargs)
+[rank5]:   File "/root/miniconda3/envs/ltx/lib/python3.10/site-packages/click/core.py", line 1524, in __call__
+[rank5]:     return self.main(*args, **kwargs)
+[rank5]:   File "/root/miniconda3/envs/ltx/lib/python3.10/site-packages/typer/core.py", line 708, in main
+[rank5]:     return _main(
+[rank5]:   File "/root/miniconda3/envs/ltx/lib/python3.10/site-packages/typer/core.py", line 188, in _main
+[rank5]:     rv = self.invoke(ctx)
+[rank5]:   File "/root/miniconda3/envs/ltx/lib/python3.10/site-packages/click/core.py", line 1308, in invoke
+[rank5]:     return ctx.invoke(self.callback, **ctx.params)
+[rank5]:   File "/root/miniconda3/envs/ltx/lib/python3.10/site-packages/click/core.py", line 877, in invoke
+[rank5]:     return callback(*args, **kwargs)
+[rank5]:   File "/root/miniconda3/envs/ltx/lib/python3.10/site-packages/typer/main.py", line 1514, in wrapper
+[rank5]:     return callback(**use_params)
+[rank5]:   File "/data/vjuicefs_ai_camera_jgroup_acadmic/public_data/11194554/WorkSpace/LTX-2/packages/ltx-trainer/scripts/train_audio_full.py", line 59, in main
+[rank5]:     trainer.train(disable_progress_bars=disable_progress_bars)
+[rank5]:   File "/data/vjuicefs_ai_camera_jgroup_acadmic/public_data/11194554/WorkSpace/LTX-2/packages/ltx-trainer/src/ltx_trainer/trainer_vanilla_base.py", line 198, in train
+[rank5]:     sampled_videos_paths = self._run_validation(progress)
+[rank5]:   File "/data/vjuicefs_ai_camera_jgroup_acadmic/public_data/11194554/WorkSpace/LTX-2/packages/ltx-trainer/src/ltx_trainer/trainer_vanilla_base.py", line 875, in _run_validation
+[rank5]:     sampled = self._validation_runner.run(
+[rank5]:   File "/root/miniconda3/envs/ltx/lib/python3.10/site-packages/torch/utils/_contextlib.py", line 124, in decorate_context
+[rank5]:     return func(*args, **kwargs)
+[rank5]:   File "/data/vjuicefs_ai_camera_jgroup_acadmic/public_data/11194554/WorkSpace/LTX-2/packages/ltx-trainer/src/ltx_trainer/gpu_utils.py", line 62, in wrapper
+[rank5]:     return func(*args, **kwargs)
+[rank5]:   File "/data/vjuicefs_ai_camera_jgroup_acadmic/public_data/11194554/WorkSpace/LTX-2/packages/ltx-trainer/src/ltx_trainer/validation_runner_bakcup.py", line 201, in run
+[rank5]:     video, audio = self._generate_sample(
+[rank5]:   File "/data/vjuicefs_ai_camera_jgroup_acadmic/public_data/11194554/WorkSpace/LTX-2/packages/ltx-trainer/src/ltx_trainer/validation_runner.py", line 447, in _generate_sample
+[rank5]:     return super()._generate_sample(
+[rank5]:   File "/data/vjuicefs_ai_camera_jgroup_acadmic/public_data/11194554/WorkSpace/LTX-2/packages/ltx-trainer/src/ltx_trainer/validation_runner_bakcup.py", line 560, in _generate_sample
+[rank5]:     video_state, audio_state = self._run_denoising(
+[rank5]:   File "/data/vjuicefs_ai_camera_jgroup_acadmic/public_data/11194554/WorkSpace/LTX-2/packages/ltx-trainer/src/ltx_trainer/validation_runner.py", line 642, in _run_denoising
+[rank5]:     positive_video, positive_audio = x0_model(
+[rank5]:   File "/root/miniconda3/envs/ltx/lib/python3.10/site-packages/torch/nn/modules/module.py", line 1779, in _wrapped_call_impl
+[rank5]:     return self._call_impl(*args, **kwargs)
+[rank5]:   File "/root/miniconda3/envs/ltx/lib/python3.10/site-packages/torch/nn/modules/module.py", line 1790, in _call_impl
+[rank5]:     return forward_call(*args, **kwargs)
+[rank5]:   File "/data/vjuicefs_ai_camera_jgroup_acadmic/public_data/11194554/WorkSpace/LTX-2/packages/ltx-core/src/ltx_core/model/transformer/model.py", line 590, in forward
+[rank5]:     vx, ax = self.velocity_model(video, audio, perturbations)
+[rank5]:   File "/root/miniconda3/envs/ltx/lib/python3.10/site-packages/torch/nn/modules/module.py", line 1779, in _wrapped_call_impl
+[rank5]:     return self._call_impl(*args, **kwargs)
+[rank5]:   File "/root/miniconda3/envs/ltx/lib/python3.10/site-packages/torch/nn/modules/module.py", line 1790, in _call_impl
+[rank5]:     return forward_call(*args, **kwargs)
+[rank5]:   File "/root/miniconda3/envs/ltx/lib/python3.10/site-packages/torch/distributed/fsdp/fully_sharded_data_parallel.py", line 857, in forward
+[rank5]:     output = self._fsdp_wrapped_module(*args, **kwargs)
+[rank5]:   File "/root/miniconda3/envs/ltx/lib/python3.10/site-packages/torch/nn/modules/module.py", line 1779, in _wrapped_call_impl
+[rank5]:     return self._call_impl(*args, **kwargs)
+[rank5]:   File "/root/miniconda3/envs/ltx/lib/python3.10/site-packages/torch/nn/modules/module.py", line 1790, in _call_impl
+[rank5]:     return forward_call(*args, **kwargs)
+[rank5]:   File "/root/miniconda3/envs/ltx/lib/python3.10/site-packages/accelerate/utils/operations.py", line 823, in forward
+[rank5]:     return model_forward(*args, **kwargs)
+[rank5]:   File "/root/miniconda3/envs/ltx/lib/python3.10/site-packages/accelerate/utils/operations.py", line 811, in __call__
+[rank5]:     return convert_to_fp32(self.model_forward(*args, **kwargs))
+[rank5]:   File "/root/miniconda3/envs/ltx/lib/python3.10/site-packages/torch/amp/autocast_mode.py", line 44, in decorate_autocast
+[rank5]:     return func(*args, **kwargs)
+[rank5]:   File "/root/miniconda3/envs/ltx/lib/python3.10/site-packages/peft/peft_model.py", line 921, in forward
+[rank5]:     return self.get_base_model()(*args, **kwargs)
+[rank5]:   File "/root/miniconda3/envs/ltx/lib/python3.10/site-packages/torch/nn/modules/module.py", line 1779, in _wrapped_call_impl
+[rank5]:     return self._call_impl(*args, **kwargs)
+[rank5]:   File "/root/miniconda3/envs/ltx/lib/python3.10/site-packages/torch/nn/modules/module.py", line 1790, in _call_impl
+[rank5]:     return forward_call(*args, **kwargs)
+[rank5]:   File "/data/vjuicefs_ai_camera_jgroup_acadmic/public_data/11194554/WorkSpace/LTX-2/packages/ltx-core/src/ltx_core/model/transformer/model.py", line 510, in forward
+[rank5]:     audio_args = self.audio_args_preprocessor.prepare(audio, video) if audio is not None else None
+[rank5]:   File "/data/vjuicefs_ai_camera_jgroup_acadmic/public_data/11194554/WorkSpace/LTX-2/packages/ltx-core/src/ltx_core/model/transformer/transformer_args.py", line 315, in prepare
+[rank5]:     transformer_args = self.simple_preprocessor.prepare(modality)
+[rank5]:   File "/data/vjuicefs_ai_camera_jgroup_acadmic/public_data/11194554/WorkSpace/LTX-2/packages/ltx-core/src/ltx_core/model/transformer/transformer_args.py", line 220, in prepare
+[rank5]:     x = self.patchify_proj(modality.latent)
+[rank5]:   File "/root/miniconda3/envs/ltx/lib/python3.10/site-packages/torch/nn/modules/module.py", line 1779, in _wrapped_call_impl
+[rank5]:     return self._call_impl(*args, **kwargs)
+[rank5]:   File "/root/miniconda3/envs/ltx/lib/python3.10/site-packages/torch/nn/modules/module.py", line 1790, in _call_impl
+[rank5]:     return forward_call(*args, **kwargs)
+[rank5]:   File "/root/miniconda3/envs/ltx/lib/python3.10/site-packages/torch/nn/modules/linear.py", line 134, in forward
+[rank5]:     return F.linear(input, self.weight, self.bias)
+[rank5]: RuntimeError: mat2 must be a matrix, got 1-D tensor
+[rank0]: Traceback (most recent call last):
+[rank0]:   File "/data/vjuicefs_ai_camera_jgroup_acadmic/public_data/11194554/WorkSpace/LTX-2/packages/ltx-trainer/scripts/train_audio_full.py", line 63, in <module>
+[rank0]:     app()
+[rank0]:   File "/root/miniconda3/envs/ltx/lib/python3.10/site-packages/typer/main.py", line 1152, in __call__
+[rank0]:     raise e
+[rank0]:   File "/root/miniconda3/envs/ltx/lib/python3.10/site-packages/typer/main.py", line 1135, in __call__
+[rank0]:     return get_command(self)(*args, **kwargs)
+[rank0]:   File "/root/miniconda3/envs/ltx/lib/python3.10/site-packages/click/core.py", line 1524, in __call__
+[rank0]:     return self.main(*args, **kwargs)
+[rank0]:   File "/root/miniconda3/envs/ltx/lib/python3.10/site-packages/typer/core.py", line 708, in main
+[rank0]:     return _main(
+[rank0]:   File "/root/miniconda3/envs/ltx/lib/python3.10/site-packages/typer/core.py", line 188, in _main
+[rank0]:     rv = self.invoke(ctx)
+[rank0]:   File "/root/miniconda3/envs/ltx/lib/python3.10/site-packages/click/core.py", line 1308, in invoke
+[rank0]:     return ctx.invoke(self.callback, **ctx.params)
+[rank0]:   File "/root/miniconda3/envs/ltx/lib/python3.10/site-packages/click/core.py", line 877, in invoke
+[rank0]:     return callback(*args, **kwargs)
+[rank0]:   File "/root/miniconda3/envs/ltx/lib/python3.10/site-packages/typer/main.py", line 1514, in wrapper
+[rank0]:     return callback(**use_params)
+[rank0]:   File "/data/vjuicefs_ai_camera_jgroup_acadmic/public_data/11194554/WorkSpace/LTX-2/packages/ltx-trainer/scripts/train_audio_full.py", line 59, in main
+[rank0]:     trainer.train(disable_progress_bars=disable_progress_bars)
+[rank0]:   File "/data/vjuicefs_ai_camera_jgroup_acadmic/public_data/11194554/WorkSpace/LTX-2/packages/ltx-trainer/src/ltx_trainer/trainer_vanilla_base.py", line 198, in train
+[rank0]:     sampled_videos_paths = self._run_validation(progress)
+[rank0]:   File "/data/vjuicefs_ai_camera_jgroup_acadmic/public_data/11194554/WorkSpace/LTX-2/packages/ltx-trainer/src/ltx_trainer/trainer_vanilla_base.py", line 875, in _run_validation
+[rank0]:     sampled = self._validation_runner.run(
+[rank0]:   File "/root/miniconda3/envs/ltx/lib/python3.10/site-packages/torch/utils/_contextlib.py", line 124, in decorate_context
+[rank0]:     return func(*args, **kwargs)
+[rank0]:   File "/data/vjuicefs_ai_camera_jgroup_acadmic/public_data/11194554/WorkSpace/LTX-2/packages/ltx-trainer/src/ltx_trainer/gpu_utils.py", line 62, in wrapper
+[rank0]:     return func(*args, **kwargs)
+[rank0]:   File "/data/vjuicefs_ai_camera_jgroup_acadmic/public_data/11194554/WorkSpace/LTX-2/packages/ltx-trainer/src/ltx_trainer/validation_runner_bakcup.py", line 201, in run
+[rank0]:     video, audio = self._generate_sample(
+[rank0]:   File "/data/vjuicefs_ai_camera_jgroup_acadmic/public_data/11194554/WorkSpace/LTX-2/packages/ltx-trainer/src/ltx_trainer/validation_runner.py", line 447, in _generate_sample
+[rank0]:     return super()._generate_sample(
+[rank0]:   File "/data/vjuicefs_ai_camera_jgroup_acadmic/public_data/11194554/WorkSpace/LTX-2/packages/ltx-trainer/src/ltx_trainer/validation_runner_bakcup.py", line 560, in _generate_sample
+[rank0]:     video_state, audio_state = self._run_denoising(
+[rank0]:   File "/data/vjuicefs_ai_camera_jgroup_acadmic/public_data/11194554/WorkSpace/LTX-2/packages/ltx-trainer/src/ltx_trainer/validation_runner.py", line 642, in _run_denoising
+[rank0]:     positive_video, positive_audio = x0_model(
+[rank0]:   File "/root/miniconda3/envs/ltx/lib/python3.10/site-packages/torch/nn/modules/module.py", line 1779, in _wrapped_call_impl
+[rank0]:     return self._call_impl(*args, **kwargs)
+[rank0]:   File "/root/miniconda3/envs/ltx/lib/python3.10/site-packages/torch/nn/modules/module.py", line 1790, in _call_impl
+[rank0]:     return forward_call(*args, **kwargs)
+[rank0]:   File "/data/vjuicefs_ai_camera_jgroup_acadmic/public_data/11194554/WorkSpace/LTX-2/packages/ltx-core/src/ltx_core/model/transformer/model.py", line 590, in forward
+[rank0]:     vx, ax = self.velocity_model(video, audio, perturbations)
+[rank0]:   File "/root/miniconda3/envs/ltx/lib/python3.10/site-packages/torch/nn/modules/module.py", line 1779, in _wrapped_call_impl
+[rank0]:     return self._call_impl(*args, **kwargs)
+[rank0]:   File "/root/miniconda3/envs/ltx/lib/python3.10/site-packages/torch/nn/modules/module.py", line 1790, in _call_impl
+[rank0]:     return forward_call(*args, **kwargs)
+[rank0]:   File "/root/miniconda3/envs/ltx/lib/python3.10/site-packages/torch/distributed/fsdp/fully_sharded_data_parallel.py", line 857, in forward
+[rank0]:     output = self._fsdp_wrapped_module(*args, **kwargs)
+[rank0]:   File "/root/miniconda3/envs/ltx/lib/python3.10/site-packages/torch/nn/modules/module.py", line 1779, in _wrapped_call_impl
+[rank0]:     return self._call_impl(*args, **kwargs)
+[rank0]:   File "/root/miniconda3/envs/ltx/lib/python3.10/site-packages/torch/nn/modules/module.py", line 1790, in _call_impl
+[rank0]:     return forward_call(*args, **kwargs)
+[rank0]:   File "/root/miniconda3/envs/ltx/lib/python3.10/site-packages/accelerate/utils/operations.py", line 823, in forward
+[rank0]:     return model_forward(*args, **kwargs)
+[rank0]:   File "/root/miniconda3/envs/ltx/lib/python3.10/site-packages/accelerate/utils/operations.py", line 811, in __call__
+[rank0]:     return convert_to_fp32(self.model_forward(*args, **kwargs))
+[rank0]:   File "/root/miniconda3/envs/ltx/lib/python3.10/site-packages/torch/amp/autocast_mode.py", line 44, in decorate_autocast
+[rank0]:     return func(*args, **kwargs)
+[rank0]:   File "/root/miniconda3/envs/ltx/lib/python3.10/site-packages/peft/peft_model.py", line 921, in forward
+[rank0]:     return self.get_base_model()(*args, **kwargs)
+[rank0]:   File "/root/miniconda3/envs/ltx/lib/python3.10/site-packages/torch/nn/modules/module.py", line 1779, in _wrapped_call_impl
+[rank0]:     return self._call_impl(*args, **kwargs)
+[rank0]:   File "/root/miniconda3/envs/ltx/lib/python3.10/site-packages/torch/nn/modules/module.py", line 1790, in _call_impl
+[rank0]:     return forward_call(*args, **kwargs)
+[rank0]:   File "/data/vjuicefs_ai_camera_jgroup_acadmic/public_data/11194554/WorkSpace/LTX-2/packages/ltx-core/src/ltx_core/model/transformer/model.py", line 510, in forward
+[rank0]:     audio_args = self.audio_args_preprocessor.prepare(audio, video) if audio is not None else None
+[rank0]:   File "/data/vjuicefs_ai_camera_jgroup_acadmic/public_data/11194554/WorkSpace/LTX-2/packages/ltx-core/src/ltx_core/model/transformer/transformer_args.py", line 315, in prepare
+[rank0]:     transformer_args = self.simple_preprocessor.prepare(modality)
+[rank0]:   File "/data/vjuicefs_ai_camera_jgroup_acadmic/public_data/11194554/WorkSpace/LTX-2/packages/ltx-core/src/ltx_core/model/transformer/transformer_args.py", line 220, in prepare
+[rank0]:     x = self.patchify_proj(modality.latent)
+[rank0]:   File "/root/miniconda3/envs/ltx/lib/python3.10/site-packages/torch/nn/modules/module.py", line 1779, in _wrapped_call_impl
+[rank0]:     return self._call_impl(*args, **kwargs)
+[rank0]:   File "/root/miniconda3/envs/ltx/lib/python3.10/site-packages/torch/nn/modules/module.py", line 1790, in _call_impl
+[rank0]:     return forward_call(*args, **kwargs)
+[rank0]:   File "/root/miniconda3/envs/ltx/lib/python3.10/site-packages/torch/nn/modules/linear.py", line 134, in forward
+[rank0]:     return F.linear(input, self.weight, self.bias)
+[rank0]: RuntimeError: mat2 must be a matrix, got 1-D tensor
+W0805 07:14:15.679000 3518976 site-packages/torch/distributed/elastic/multiprocessing/api.py:1012] Sending process 3519043 closing signal SIGTERM
+W0805 07:14:15.681000 3518976 site-packages/torch/distributed/elastic/multiprocessing/api.py:1012] Sending process 3519044 closing signal SIGTERM
+W0805 07:14:15.681000 3518976 site-packages/torch/distributed/elastic/multiprocessing/api.py:1012] Sending process 3519045 closing signal SIGTERM
+W0805 07:14:15.681000 3518976 site-packages/torch/distributed/elastic/multiprocessing/api.py:1012] Sending process 3519047 closing signal SIGTERM
+W0805 07:14:15.681000 3518976 site-packages/torch/distributed/elastic/multiprocessing/api.py:1012] Sending process 3519048 closing signal SIGTERM
+W0805 07:14:15.681000 3518976 site-packages/torch/distributed/elastic/multiprocessing/api.py:1012] Sending process 3519049 closing signal SIGTERM
+W0805 07:14:15.681000 3518976 site-packages/torch/distributed/elastic/multiprocessing/api.py:1012] Sending process 3519050 closing signal SIGTERM
+E0805 07:14:16.798000 3518976 site-packages/torch/distributed/elastic/multiprocessing/api.py:986] failed (exitcode: 1) local_rank: 3 (pid: 3519046) of binary: /root/miniconda3/envs/ltx/bin/python3.10
+Traceback (most recent call last):
+  File "/root/miniconda3/envs/ltx/bin/accelerate", line 6, in <module>
+    sys.exit(main())
+  File "/root/miniconda3/envs/ltx/lib/python3.10/site-packages/accelerate/commands/accelerate_cli.py", line 50, in main
+    args.func(args)
+  File "/root/miniconda3/envs/ltx/lib/python3.10/site-packages/accelerate/commands/launch.py", line 1392, in launch_command
+    multi_gpu_launcher(args)
+  File "/root/miniconda3/envs/ltx/lib/python3.10/site-packages/accelerate/commands/launch.py", line 1023, in multi_gpu_launcher
+    distrib_run.run(args)
+  File "/root/miniconda3/envs/ltx/lib/python3.10/site-packages/torch/distributed/run.py", line 981, in run
+    elastic_launch(
+  File "/root/miniconda3/envs/ltx/lib/python3.10/site-packages/torch/distributed/launcher/api.py", line 170, in __call__
+    return launch_agent(self._config, self._entrypoint, list(args))
+  File "/root/miniconda3/envs/ltx/lib/python3.10/site-packages/torch/distributed/launcher/api.py", line 317, in launch_agent
+    raise ChildFailedError(
+torch.distributed.elastic.multiprocessing.errors.ChildFailedError: 
+============================================================
+scripts/train_audio_full.py FAILED
+------------------------------------------------------------
+Failures:
+[1]:
+  time      : 2026-08-05_07:14:16
+  host      : custom-20260413030642291-worker-0
+  rank      : 0 (local_rank: 0)
+  exitcode  : -15 (pid: 3519043)
+  error_file: <N/A>
+  traceback : Signal 15 (SIGTERM) received by PID 3519043
+[2]:
+  time      : 2026-08-05_07:14:16
+  host      : custom-20260413030642291-worker-0
+  rank      : 1 (local_rank: 1)
+  exitcode  : 1 (pid: 3519044)
+  error_file: <N/A>
+  traceback : To enable traceback see: https://pytorch.org/docs/stable/elastic/errors.html
+[3]:
+  time      : 2026-08-05_07:14:16
+  host      : custom-20260413030642291-worker-0
+  rank      : 2 (local_rank: 2)
+  exitcode  : 1 (pid: 3519045)
+  error_file: <N/A>
+  traceback : To enable traceback see: https://pytorch.org/docs/stable/elastic/errors.html
+[4]:
+  time      : 2026-08-05_07:14:16
+  host      : custom-20260413030642291-worker-0
+  rank      : 4 (local_rank: 4)
+  exitcode  : 1 (pid: 3519047)
+  error_file: <N/A>
+  traceback : To enable traceback see: https://pytorch.org/docs/stable/elastic/errors.html
+[5]:
+  time      : 2026-08-05_07:14:16
+  host      : custom-20260413030642291-worker-0
+  rank      : 5 (local_rank: 5)
+  exitcode  : 1 (pid: 3519048)
+  error_file: <N/A>
+  traceback : To enable traceback see: https://pytorch.org/docs/stable/elastic/errors.html
+[6]:
+  time      : 2026-08-05_07:14:16
+  host      : custom-20260413030642291-worker-0
+  rank      : 6 (local_rank: 6)
+  exitcode  : 1 (pid: 3519049)
+  error_file: <N/A>
+  traceback : To enable traceback see: https://pytorch.org/docs/stable/elastic/errors.html
+[7]:
+  time      : 2026-08-05_07:14:16
+  host      : custom-20260413030642291-worker-0
+  rank      : 7 (local_rank: 7)
+  exitcode  : 1 (pid: 3519050)
+  error_file: <N/A>
+  traceback : To enable traceback see: https://pytorch.org/docs/stable/elastic/errors.html
+------------------------------------------------------------
+Root Cause (first observed failure):
+[0]:
+  time      : 2026-08-05_07:14:15
+  host      : custom-20260413030642291-worker-0
+  rank      : 3 (local_rank: 3)
+  exitcode  : 1 (pid: 3519046)
+  error_file: <N/A>
+  traceback : To enable traceback see: https://pytorch.org/docs/stable/elastic/errors.html
+============================================================
