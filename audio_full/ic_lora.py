@@ -1,15 +1,14 @@
-"""Evaluate audio-branch full fine-tuning checkpoints with or without Motion Track IC-LoRA.
+"""Evaluate audio-full checkpoints with or without Sparse Motion Track IC-LoRA.
 
-The audio-full trainer saves only the original audio-side transformer weights. This
-pipeline overlays those weights onto the base LTX checkpoint before optional LoRA
-fusion, preserving the exact training-time composition:
+The trainer saves only original audio-side transformer weights.  This pipeline
+reconstructs the evaluation model in the same order used during training:
 
-1. ``audio_full_ic_lora``: base model -> trained audio weights -> Motion Track IC-LoRA.
-2. ``audio_full``: base model -> trained audio weights, with no LoRA or reference video.
+* ``audio_full_ic_lora``: base checkpoint -> trained audio weights -> IC-LoRA.
+* ``audio_full``: base checkpoint -> trained audio weights, without any LoRA.
 
-The overlay is applied inside the state-dict loader, before the model is materialized.
-This is important when the frozen IC-LoRA contains audio-side targets: loading the
-Audio checkpoint after LoRA fusion would overwrite the LoRA delta.
+To avoid a CUDA loading peak, the base state dict, audio-weight overlay, and
+optional LoRA fusion are all kept on CPU.  Only the final materialized model is
+moved to CUDA.
 """
 
 from __future__ import annotations
@@ -46,9 +45,11 @@ from ltx_pipelines.utils import args as pipeline_args
 
 try:
     from ltx_pipelines.utils.allocator_trim_strategy import AllocatorTrimStrategy
-except ImportError:  # Compatibility with LTX pipeline versions before allocator trimming.
+except ImportError:  # Compatibility with older LTX pipeline versions.
+
     class AllocatorTrimStrategy(str, Enum):
         TRIM = "trim"
+
 
 from ltx_pipelines.utils.blocks import (
     AudioDecoder,
@@ -72,16 +73,12 @@ VideoMaskConditioningAction = pipeline_args.VideoMaskConditioningAction
 
 
 class EvaluationMode(str, Enum):
-    """Supported audio-full evaluation compositions."""
-
     AUDIO_FULL_IC_LORA = "audio_full_ic_lora"
     AUDIO_FULL = "audio_full"
 
 
 @dataclass(frozen=True)
 class AudioFullCheckpointInfo:
-    """Resolved audio-full checkpoint and its safetensors metadata."""
-
     path: str
     metadata: dict[str, str]
     inferred_mode: EvaluationMode | None
@@ -110,7 +107,7 @@ _AUDIO_MARKERS = (
 
 
 def _canonical_key(raw_key: str) -> str:
-    """Normalize trainer, PEFT, FSDP and compiled-model key wrappers."""
+    """Normalize trainer, PEFT, FSDP, and torch.compile key wrappers."""
 
     key = raw_key
     leading_prefixes = (
@@ -130,14 +127,15 @@ def _canonical_key(raw_key: str) -> str:
                 key = key[len(prefix) :]
                 changed = True
 
-    key = key.replace("._orig_mod.", ".")
-    key = key.replace("._fsdp_wrapped_module.", ".")
-    key = key.replace(".base_layer.", ".")
-    return key
+    return (
+        key.replace("._orig_mod.", ".")
+        .replace("._fsdp_wrapped_module.", ".")
+        .replace(".base_layer.", ".")
+    )
 
 
 def _is_audio_full_key(raw_key: str) -> bool:
-    """Match exactly the parameter scope selected by trainer_audio_full.py."""
+    """Match the exact parameter scope selected by trainer_audio_full.py."""
 
     key = _canonical_key(raw_key)
     if ".lora_" in key:
@@ -146,10 +144,7 @@ def _is_audio_full_key(raw_key: str) -> bool:
 
 
 def _normalise_paths(paths: str | Sequence[str]) -> tuple[str, ...]:
-    if isinstance(paths, str):
-        values = (paths,)
-    else:
-        values = tuple(paths)
+    values = (paths,) if isinstance(paths, str) else tuple(paths)
     return tuple(str(Path(path).expanduser().resolve()) for path in values)
 
 
@@ -172,7 +167,7 @@ def _infer_checkpoint_mode(metadata: dict[str, str]) -> EvaluationMode | None:
 
 
 def resolve_audio_full_checkpoint(path_or_directory: str) -> AudioFullCheckpointInfo:
-    """Resolve a checkpoint file or the latest checkpoint inside a directory."""
+    """Resolve a checkpoint file, or the highest-step checkpoint in a directory."""
 
     path = Path(path_or_directory).expanduser().resolve()
     if path.is_dir():
@@ -205,13 +200,32 @@ def resolve_audio_full_checkpoint(path_or_directory: str) -> AudioFullCheckpoint
     )
 
 
-class AudioFullOverlayStateDictLoader:
-    """Load the base model and overlay trained audio weights before LoRA fusion.
+def _log_cuda_memory(tag: str) -> None:
+    if not torch.cuda.is_available():
+        return
+    logger.info(
+        "[CUDA memory] %s: allocated=%.2f GiB, reserved=%.2f GiB, peak=%.2f GiB",
+        tag,
+        torch.cuda.memory_allocated() / (1024**3),
+        torch.cuda.memory_reserved() / (1024**3),
+        torch.cuda.max_memory_allocated() / (1024**3),
+    )
 
-    ``SingleGPUModelBuilder`` invokes its state-dict loader for both the base model
-    and LoRA files. This wrapper overlays only when the requested path is the base
-    checkpoint. The builder then applies Motion Track IC-LoRA to the already-updated
-    state dict, reproducing the training-time order exactly.
+
+def _release_cuda_cache(tag: str) -> None:
+    if not torch.cuda.is_available():
+        return
+    torch.cuda.empty_cache()
+    _log_cuda_memory(tag)
+
+
+class AudioFullOverlayStateDictLoader:
+    """Load and combine transformer weights on CPU before CUDA materialization.
+
+    ``SingleGPUModelBuilder`` calls this loader both for the base checkpoint and
+    for LoRA files.  The base checkpoint is always loaded on CPU and receives the
+    trained audio overlay there.  LoRA files retain the builder-provided device;
+    the builder is explicitly configured with a CPU LoRA load device.
     """
 
     def __init__(
@@ -232,9 +246,24 @@ class AudioFullOverlayStateDictLoader:
         sd_ops: SDOps | None = None,
         device: torch.device | None = None,
     ) -> StateDict:
-        state = self._delegate.load(path, sd_ops=sd_ops, device=device)
-        if _normalise_paths(path) != self._base_paths:
+        is_base_checkpoint = _normalise_paths(path) == self._base_paths
+        load_device = torch.device("cpu") if is_base_checkpoint else device
+
+        if is_base_checkpoint:
+            logger.info(
+                "Loading the base transformer on CPU for memory-safe audio overlay "
+                "(requested final device: %s)",
+                device,
+            )
+
+        state = self._delegate.load(path, sd_ops=sd_ops, device=load_device)
+        if not is_base_checkpoint:
             return state
+        if state.device.type != "cpu":
+            raise RuntimeError(
+                "Audio-full base state must remain on CPU during overlay; "
+                f"loader returned device={state.device}"
+            )
         return self._overlay_audio_weights(state)
 
     def _overlay_audio_weights(self, base_state: StateDict) -> StateDict:
@@ -243,7 +272,7 @@ class AudioFullOverlayStateDictLoader:
             canonical = _canonical_key(actual_key)
             if canonical in actual_by_canonical:
                 raise RuntimeError(
-                    "Duplicate canonical base-model key while preparing audio checkpoint overlay: "
+                    "Duplicate canonical base-model key while preparing audio overlay: "
                     f"{canonical!r} maps to both {actual_by_canonical[canonical]!r} and {actual_key!r}"
                 )
             actual_by_canonical[canonical] = actual_key
@@ -276,37 +305,44 @@ class AudioFullOverlayStateDictLoader:
                     f"missing={sorted(missing)[:30]}, unexpected={sorted(unexpected)[:30]}"
                 )
 
-            merged = dict(base_state.sd)
+            # Mutate the state-dict mapping in place.  This drops each old base
+            # audio tensor as soon as its trained replacement is installed,
+            # avoiding a second complete Audio branch even in host memory.
+            merged = base_state.sd
             loaded_bytes = 0
             for canonical in sorted(expected_audio_keys):
                 actual_key = actual_by_canonical[canonical]
-                target = base_state.sd[actual_key]
+                target = merged[actual_key]
                 source = handle.get_tensor(source_by_canonical[canonical])
                 if source.shape != target.shape:
                     raise RuntimeError(
                         f"Audio-full checkpoint shape mismatch for {canonical}: "
                         f"{tuple(source.shape)} != {tuple(target.shape)}"
                     )
-                source = source.to(device=target.device, dtype=target.dtype, non_blocking=True)
-                merged[actual_key] = source
-                loaded_bytes += source.nbytes
+
+                replacement = source.to(device="cpu", dtype=target.dtype, copy=False)
+                merged[actual_key] = replacement
+                loaded_bytes += replacement.nbytes
+                del target, source, replacement
 
         logger.info(
-            "Overlaid %d audio-full tensors (%.2f GiB) from %s",
+            "Overlaid %d audio-full tensors on CPU (%.2f GiB) from %s",
             len(expected_audio_keys),
             loaded_bytes / (1024**3),
             self._audio_full_checkpoint_path,
         )
+        _log_cuda_memory("after CPU audio overlay; before model materialization")
         return replace(
             base_state,
             sd=merged,
+            device=torch.device("cpu"),
             size=sum(tensor.nbytes for tensor in merged.values()),
             dtype={tensor.dtype for tensor in merged.values()},
         )
 
 
 def _construct_compat(cls: type, *args: object, **kwargs: object) -> object:
-    """Construct a pipeline block while dropping kwargs absent in older LTX releases."""
+    """Construct a pipeline block while dropping kwargs absent in older releases."""
 
     parameters = inspect.signature(cls.__init__).parameters
     accepts_var_kwargs = any(
@@ -328,7 +364,7 @@ def _build_audio_full_stage(
     compilation_config: CompilationConfig | None,
     alloc_trim_strategy: AllocatorTrimStrategy,
 ) -> DiffusionStage:
-    """Build a DiffusionStage with the audio overlay loader on old or new LTX APIs."""
+    """Build a DiffusionStage using a CPU-composed transformer state dict."""
 
     stage_registry = registry or DummyRegistry()
     loader = AudioFullOverlayStateDictLoader(
@@ -342,6 +378,7 @@ def _build_audio_full_stage(
         loras=loras,
         model_loader=loader,
         registry=stage_registry,
+        lora_load_device=torch.device("cpu"),
     )
 
     stage_parameters = inspect.signature(DiffusionStage.__init__).parameters
@@ -378,17 +415,15 @@ def _validate_mode_configuration(
     quantization: QuantizationPolicy | None,
     offload_mode: OffloadMode,
 ) -> None:
-    """Reject silently mismatched evaluation compositions."""
-
     if quantization is not None:
         raise ValueError(
             "Audio-full checkpoint overlays currently require unquantized inference. "
-            "Quantization changes the state-dict layout and would invalidate strict weight checks."
+            "Quantization changes the state-dict layout and invalidates strict checks."
         )
     if offload_mode != OffloadMode.NONE:
         raise ValueError(
             "Audio-full checkpoint overlays currently require --offload-mode none. "
-            "CPU/disk block streaming needs a streaming weights-provider overlay implementation."
+            "CPU/disk block streaming needs a dedicated streaming overlay implementation."
         )
 
     inferred = checkpoint_info.inferred_mode
@@ -405,7 +440,7 @@ def _validate_mode_configuration(
         lora = loras[0]
         if abs(float(lora.strength) - 1.0) > 1e-8:
             raise ValueError(
-                "The frozen Motion Track IC-LoRA must be evaluated at strength 1.0 to match training; "
+                "The frozen Motion Track IC-LoRA must use strength 1.0 to match training; "
                 f"got {lora.strength}"
             )
         if not video_conditioning:
@@ -416,18 +451,16 @@ def _validate_mode_configuration(
             actual_lora_name = Path(lora.path).name
             if actual_lora_name != Path(expected_lora_name).name:
                 raise ValueError(
-                    "The supplied IC-LoRA does not match the checkpoint training metadata: "
+                    "The supplied IC-LoRA does not match checkpoint metadata: "
                     f"expected {expected_lora_name!r}, got {actual_lora_name!r}"
                 )
     else:
         if loras:
-            raise ValueError("audio_full mode must not receive --lora; this evaluation contains no LoRA")
+            raise ValueError("audio_full mode must not receive --lora")
         if video_conditioning:
-            raise ValueError(
-                "audio_full mode must not receive --video-conditioning; reference tokens belong to IC-LoRA evaluation"
-            )
+            raise ValueError("audio_full mode must not receive --video-conditioning")
         if conditioning_attention_mask is not None:
-            raise ValueError("--conditioning-attention-mask is only valid in audio_full_ic_lora mode")
+            raise ValueError("--conditioning-attention-mask is valid only in audio_full_ic_lora mode")
 
 
 class AudioFullEvaluationPipeline:
@@ -625,6 +658,7 @@ class AudioFullEvaluationPipeline:
             )
         )
 
+        _release_cuda_cache("before Stage 1 transformer materialization")
         video_state, audio_state = self.stage_1(
             denoiser=SimpleDenoiser(video_context, audio_context),
             sigmas=stage_1_sigmas.to(dtype=torch.float32, device=self.device),
@@ -638,6 +672,7 @@ class AudioFullEvaluationPipeline:
         )
         if video_state is None or audio_state is None:
             raise RuntimeError("Stage 1 did not return both video and audio states")
+        _log_cuda_memory("after Stage 1")
 
         if skip_stage_2:
             logger.info("Skipping Stage 2 (--skip-stage-2 enabled)")
@@ -665,6 +700,7 @@ class AudioFullEvaluationPipeline:
             )
         )
         stage_2_sigmas = stage_2_sigmas.to(dtype=torch.float32, device=self.device)
+        _release_cuda_cache("before Stage 2 transformer materialization")
         video_state, audio_state = self.stage_2(
             denoiser=SimpleDenoiser(video_context, audio_context),
             sigmas=stage_2_sigmas,
@@ -687,6 +723,7 @@ class AudioFullEvaluationPipeline:
         )
         if video_state is None or audio_state is None:
             raise RuntimeError("Stage 2 did not return both video and audio states")
+        _log_cuda_memory("after Stage 2")
 
         return (
             self.video_decoder(video_state.latent, tiling_config, generator),
@@ -736,8 +773,6 @@ ICLoraPipeline = AudioFullEvaluationPipeline
 
 
 def _resolve_cli_params() -> object:
-    """Support both current and slightly older LTX pipeline argument helpers."""
-
     if hasattr(pipeline_args, "resolve_cli_params"):
         return pipeline_args.resolve_cli_params(distilled=True)
     checkpoint_path = pipeline_args.detect_checkpoint_path(distilled=True)
@@ -762,7 +797,7 @@ def main() -> None:
         "--audio-full-checkpoint",
         required=True,
         help=(
-            "Path to audio_full_weights_step_*.safetensors, or a directory containing checkpoints "
+            "Path to audio_full_weights_step_*.safetensors, or a checkpoint directory "
             "from which the highest step is selected."
         ),
     )
@@ -772,7 +807,7 @@ def main() -> None:
         nargs=2,
         metavar=("PATH", "STRENGTH"),
         default=None,
-        help="Motion Track reference video and conditioning strength; required only for audio_full_ic_lora.",
+        help="Motion Track reference video; required only for audio_full_ic_lora.",
     )
     parser.add_argument(
         "--conditioning-attention-mask",
@@ -785,7 +820,7 @@ def main() -> None:
     parser.add_argument(
         "--skip-stage-2",
         action="store_true",
-        help="Skip Stage 2 upsampling/refinement and decode the half-resolution Stage 1 output.",
+        help="Skip Stage 2 and decode the half-resolution Stage 1 output.",
     )
     args = parser.parse_args()
 
@@ -859,8 +894,6 @@ def _load_mask_video(
     width: int,
     num_frames: int,
 ) -> torch.Tensor:
-    """Load, resize and normalize a grayscale attention-mask video."""
-
     device = get_device()
     frame_iterator = decode_video_by_frame(path=mask_path, frame_cap=num_frames, device=device)
     mask_video = video_preprocess(frame_iterator, height, width, torch.bfloat16, device)
