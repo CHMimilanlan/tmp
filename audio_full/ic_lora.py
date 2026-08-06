@@ -14,6 +14,7 @@ Audio checkpoint after LoRA fusion would overwrite the LoRA delta.
 
 from __future__ import annotations
 
+import inspect
 import logging
 import re
 from collections.abc import Iterator, Sequence
@@ -42,7 +43,13 @@ from ltx_pipelines.iclora_utils import (
     read_lora_reference_temporal_scale_factor,
 )
 from ltx_pipelines.utils import args as pipeline_args
-from ltx_pipelines.utils.allocator_trim_strategy import AllocatorTrimStrategy
+
+try:
+    from ltx_pipelines.utils.allocator_trim_strategy import AllocatorTrimStrategy
+except ImportError:  # Compatibility with LTX pipeline versions before allocator trimming.
+    class AllocatorTrimStrategy(str, Enum):
+        TRIM = "trim"
+
 from ltx_pipelines.utils.blocks import (
     AudioDecoder,
     DiffusionStage,
@@ -123,7 +130,6 @@ def _canonical_key(raw_key: str) -> str:
                 key = key[len(prefix) :]
                 changed = True
 
-    # torch.compile may wrap each transformer block rather than the whole model.
     key = key.replace("._orig_mod.", ".")
     key = key.replace("._fsdp_wrapped_module.", ".")
     key = key.replace(".base_layer.", ".")
@@ -299,6 +305,18 @@ class AudioFullOverlayStateDictLoader:
         )
 
 
+def _construct_compat(cls: type, *args: object, **kwargs: object) -> object:
+    """Construct a pipeline block while dropping kwargs absent in older LTX releases."""
+
+    parameters = inspect.signature(cls.__init__).parameters
+    accepts_var_kwargs = any(
+        parameter.kind == inspect.Parameter.VAR_KEYWORD for parameter in parameters.values()
+    )
+    if not accepts_var_kwargs:
+        kwargs = {key: value for key, value in kwargs.items() if key in parameters}
+    return cls(*args, **kwargs)
+
+
 def _build_audio_full_stage(
     *,
     checkpoint_path: str,
@@ -310,7 +328,7 @@ def _build_audio_full_stage(
     compilation_config: CompilationConfig | None,
     alloc_trim_strategy: AllocatorTrimStrategy,
 ) -> DiffusionStage:
-    """Build a standard DiffusionStage with the audio overlay loader."""
+    """Build a DiffusionStage with the audio overlay loader on old or new LTX APIs."""
 
     stage_registry = registry or DummyRegistry()
     loader = AudioFullOverlayStateDictLoader(
@@ -325,6 +343,21 @@ def _build_audio_full_stage(
         model_loader=loader,
         registry=stage_registry,
     )
+
+    stage_parameters = inspect.signature(DiffusionStage.__init__).parameters
+    if "transformer_builder" in stage_parameters:
+        return DiffusionStage(
+            checkpoint_path,
+            dtype,
+            device,
+            loras=loras,
+            quantization=None,
+            registry=stage_registry,
+            compilation_config=compilation_config,
+            offload_mode=OffloadMode.NONE,
+            transformer_builder=builder,
+        )
+
     return DiffusionStage(
         builder,
         dtype,
@@ -423,13 +456,13 @@ class AudioFullEvaluationPipeline:
         self._quantization = quantization
         self._offload_mode = offload_mode
 
-        # Full mode validation also happens in __call__, once video conditioning is known.
         if quantization is not None:
             raise ValueError("Audio-full evaluation does not support quantization")
         if offload_mode != OffloadMode.NONE:
             raise ValueError("Audio-full evaluation currently supports only offload_mode=none")
 
-        self.prompt_encoder = PromptEncoder(
+        self.prompt_encoder = _construct_compat(
+            PromptEncoder,
             distilled_checkpoint_path,
             gemma_root,
             self.dtype,
@@ -438,7 +471,8 @@ class AudioFullEvaluationPipeline:
             offload_mode=offload_mode,
             alloc_trim_strategy=alloc_trim_strategy,
         )
-        self.image_conditioner = ImageConditioner(
+        self.image_conditioner = _construct_compat(
+            ImageConditioner,
             distilled_checkpoint_path,
             self.dtype,
             self.device,
@@ -457,8 +491,6 @@ class AudioFullEvaluationPipeline:
             compilation_config=compilation_config,
             alloc_trim_strategy=alloc_trim_strategy,
         )
-        # Stage 2 refines without IC-LoRA/reference tokens, but it must still use
-        # the trained audio branch for consistent audio denoising.
         self.stage_2 = _build_audio_full_stage(
             checkpoint_path=distilled_checkpoint_path,
             audio_full_checkpoint_path=self.checkpoint_info.path,
@@ -470,7 +502,8 @@ class AudioFullEvaluationPipeline:
             alloc_trim_strategy=alloc_trim_strategy,
         )
 
-        self.upsampler = VideoUpsampler(
+        self.upsampler = _construct_compat(
+            VideoUpsampler,
             distilled_checkpoint_path,
             spatial_upsampler_path,
             self.dtype,
@@ -478,14 +511,16 @@ class AudioFullEvaluationPipeline:
             registry=registry,
             alloc_trim_strategy=alloc_trim_strategy,
         )
-        self.video_decoder = VideoDecoder(
+        self.video_decoder = _construct_compat(
+            VideoDecoder,
             distilled_checkpoint_path,
             self.dtype,
             self.device,
             registry=registry,
             alloc_trim_strategy=alloc_trim_strategy,
         )
-        self.audio_decoder = AudioDecoder(
+        self.audio_decoder = _construct_compat(
+            AudioDecoder,
             distilled_checkpoint_path,
             self.dtype,
             self.device,
@@ -697,7 +732,6 @@ class AudioFullEvaluationPipeline:
         return conditionings
 
 
-# Backward-compatible import name for callers that used the original file.
 ICLoraPipeline = AudioFullEvaluationPipeline
 
 
