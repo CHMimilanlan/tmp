@@ -87,7 +87,7 @@ class ICLoraPipeline:
             registry=registry,
             offload_mode=offload_mode,
         )
-        
+
         self.image_conditioner = ImageConditioner(distilled_checkpoint_path, self.dtype, self.device, registry=registry)
         self.stage_1 = DiffusionStage(
             distilled_checkpoint_path,
@@ -257,7 +257,6 @@ class ICLoraPipeline:
                 video_context, audio_context, track_xy=track_xy, track_valid=track_valid
             ),
             sigmas=stage_1_sigmas,
-
             noiser=noiser,
             width=stage_1_output_shape.width,
             height=stage_1_output_shape.height,
@@ -271,7 +270,6 @@ class ICLoraPipeline:
         )
 
         if skip_stage_2:
-            # Skip Stage 2: Decode directly from Stage 1 output at half resolution
             logging.info("[IC-LoRA] Skipping Stage 2 (--skip-stage-2 enabled)")
             decoded_video = self.video_decoder(video_state.latent, tiling_config, generator)
             decoded_audio = self.audio_decoder(audio_state.latent)
@@ -298,7 +296,6 @@ class ICLoraPipeline:
                 video_context, audio_context, track_xy=track_xy, track_valid=track_valid
             ),
             sigmas=stage_2_sigmas,
-
             noiser=noiser,
             width=width,
             height=height,
@@ -332,14 +329,7 @@ class ICLoraPipeline:
         simple_summary_path: str | Path | None,
         summary_source_mode: str,
     ) -> None:
-        """Install hooks that configure transformers when a stage creates them.
-
-        ``DiffusionStage`` owns a lazy transformer context.  There is no model
-        instance during pipeline construction; it only exists inside
-        ``with stage._transformer_ctx(...)``.  Wrapping that context therefore
-        avoids trying to discover a transformer before it has been created and
-        also works with offloading modes that create a new instance later.
-        """
+        """Install hooks that configure transformers when a stage creates them."""
         if not (
             spatial_track_encoder_path
             or track_prope_path
@@ -360,8 +350,6 @@ class ICLoraPipeline:
             simple_summary_path=simple_summary_path,
             summary_source_mode=summary_source_mode,
         )
-        # Stage 2 has no reference-video Spatial Track Encoder conditioning,
-        # but Track-PRoPE must be present for its audio denoising blocks.
         if prope_path is not None:
             self._wrap_transformer_context(
                 self.stage_2,
@@ -395,11 +383,11 @@ class ICLoraPipeline:
 
         transformer_args = {
             "use_track_prope": track_prope_path is not None,
-            "use_ic_lora_summary":track_summary_path is not None,
+            "use_ic_lora_summary": track_summary_path is not None,
             "use_simple_summary": simple_summary_path is not None,
-            "use_audio_summary":False,
+            "use_audio_summary": False,
         }
-        
+
         @contextmanager
         def track_aware_transformer_ctx(*args: Any, **kwargs: Any):
             kwargs.update(transformer_args)
@@ -427,15 +415,15 @@ class ICLoraPipeline:
         summary_source_mode: str,
     ) -> None:
         signature = (
-            spatial_track_encoder_path, track_prope_path,
-            track_summary_path, simple_summary_path, summary_source_mode,
+            spatial_track_encoder_path,
+            track_prope_path,
+            track_summary_path,
+            simple_summary_path,
+            summary_source_mode,
         )
         if getattr(transformer, "_ic_track_modules_signature", None) == signature:
             return
 
-        # ``_transformer_ctx`` yields an ``X0Model`` wrapper whose real LTX
-        # transformer (holding ``transformer_blocks`` / track init methods) lives
-        # under ``.velocity_model``. Unwrap so we configure the actual model.
         core = getattr(transformer, "velocity_model", transformer)
 
         if track_prope_path is not None:
@@ -482,8 +470,15 @@ class ICLoraPipeline:
             core.initialize_spatial_track_modules(
                 encoder_type="simple",
                 cfg=SpatialTrackEncoderConfig(
-                    dim=128, video_t=16, video_h=8, video_w=12, audio_t=122,
-                    num_heads=8, dropout=0.0, encoder_depth=4, decoder_depth=2,
+                    dim=128,
+                    video_t=16,
+                    video_h=8,
+                    video_w=12,
+                    audio_t=122,
+                    num_heads=8,
+                    dropout=0.0,
+                    encoder_depth=4,
+                    decoder_depth=2,
                 ),
                 device=self.device,
                 dtype=self.dtype,
@@ -517,27 +512,7 @@ class ICLoraPipeline:
 
     @staticmethod
     def _load_module_weights(model: torch.nn.Module, path: str | Path, marker: str) -> None:
-        """Load a track-module checkpoint into ``model`` (an ``X0Model``).
-
-        The trainer saves each module with a stable, wrapper-free key layout:
-
-        * ``track_prope``           -> ``transformer_blocks.{i}.audio_track_prope.<param>``
-          (the block index is kept so every block gets its own tensors).
-        * ``spatial_track_encoder`` -> a *relative* key (e.g. ``video_pos``,
-          ``track_encoder.layers.0...``) with the ``spatial_track_encoder.``
-          prefix already stripped.
-        * ``track_summary``         -> ``transformer_blocks.{i}.<summary module>.<param>``.
-        * ``simple_summary``        -> ``transformer_blocks.{i}.simple_summary.<param>``
-          plus the block's ``simple_summary_scale`` parameter.
-
-        The live model, however, is an ``X0Model`` whose real LTX transformer
-        lives under ``velocity_model``, so its state-dict keys look like
-        ``velocity_model.transformer_blocks.{i}.audio_track_prope.<param>`` and
-        ``velocity_model.spatial_track_encoder.<param>``.
-
-        We therefore turn each checkpoint key into a stable *anchor suffix* and
-        match it against the model keys with ``endswith`` (uniquely).
-        """
+        """Load a track-module checkpoint into ``model`` (an ``X0Model``)."""
         path = Path(path).expanduser()
         if not path.is_file():
             raise FileNotFoundError(f"{marker} weights do not exist: {path}")
@@ -559,13 +534,14 @@ class ICLoraPipeline:
                 position = key.find(block_marker)
                 if position < 0 or ".audio_track_prope." not in key:
                     return None
-                # e.g. "transformer_blocks.0.audio_track_prope.q_proj.weight"
                 return key[position:]
         elif marker == "track_summary":
             block_marker = "transformer_blocks."
             summary_markers = (
-                ".ic_lora_summarizer.", ".summary_to_audio.",
-                ".audio_to_summary_attn.", ".summary_scale",
+                ".ic_lora_summarizer.",
+                ".summary_to_audio.",
+                ".audio_to_summary_attn.",
+                ".summary_scale",
             )
 
             def to_anchor(key: str) -> str | None:
@@ -576,14 +552,13 @@ class ICLoraPipeline:
         elif marker == "simple_summary":
             block_marker = "transformer_blocks."
             simple_summary_markers = (
-                ".simple_summary.", ".simple_summary_scale",
+                ".simple_summary.",
+                ".simple_summary_scale",
             )
 
             def to_anchor(key: str) -> str | None:
                 position = key.find(block_marker)
-                if position < 0 or not any(
-                    item in key for item in simple_summary_markers
-                ):
+                if position < 0 or not any(item in key for item in simple_summary_markers):
                     return None
                 return key[position:]
         elif marker == "spatial_track_encoder":
@@ -592,9 +567,7 @@ class ICLoraPipeline:
             def to_anchor(key: str) -> str | None:
                 position = key.find(module_prefix)
                 if position >= 0:
-                    # Checkpoint key already carries the module prefix.
                     return key[position:]
-                # Relative checkpoint key: prepend the prefix to build the anchor.
                 return module_prefix + key
         else:
             raise ValueError(f"Unknown module marker: {marker}")
@@ -622,7 +595,10 @@ class ICLoraPipeline:
         if unmatched:
             logging.warning(
                 "%d %s tensor(s) from %s could not be uniquely matched (e.g. %s)",
-                len(unmatched), marker, path, unmatched[:3],
+                len(unmatched),
+                marker,
+                path,
+                unmatched[:3],
             )
 
         incompatible = model.load_state_dict(selected, strict=False)
@@ -630,7 +606,9 @@ class ICLoraPipeline:
         if incompatible.unexpected_keys:
             logging.warning(
                 "%d unexpected %s key(s) while loading %s (e.g. %s)",
-                len(incompatible.unexpected_keys), marker, path,
+                len(incompatible.unexpected_keys),
+                marker,
+                path,
                 incompatible.unexpected_keys[:3],
             )
 
@@ -688,20 +666,6 @@ class ICLoraPipeline:
         conditioning_attention_strength: float = 1.0,
         conditioning_attention_mask: torch.Tensor | None = None,
     ) -> list[ConditioningItem]:
-        """
-        Create conditioning items for video generation.
-        Args:
-            conditioning_attention_strength: Scalar attention weight in [0, 1].
-                If conditioning_attention_mask is also provided, the downsampled mask
-                is multiplied by this strength. Otherwise this scalar is passed
-                directly as the attention mask.
-            conditioning_attention_mask: Optional pixel-space attention mask with shape
-                (B, 1, F_pixel, H_pixel, W_pixel) matching the reference video's
-                pixel dimensions. Downsampled to latent space with causal temporal
-                handling, then multiplied by conditioning_attention_strength.
-        Returns:
-            List of conditioning items. IC-LoRA conditionings are appended last.
-        """
         conditionings = combined_image_conditionings(
             images=images,
             height=height,
@@ -739,10 +703,6 @@ def main() -> None:
     checkpoint_path = detect_checkpoint_path(distilled=True)
     params = detect_params(checkpoint_path)
     parser = default_2_stage_distilled_arg_parser(params=params)
-    # The upstream single-sample parser marks --prompt as required. Batch
-    # manifests provide a prompt per sample, so argparse must not reject the
-    # command before we have a chance to inspect --batch-json. Single-sample
-    # mode is validated explicitly after parsing below.
     prompt_action = next(
         (action for action in parser._actions if action.dest == "prompt"),
         None,
@@ -776,8 +736,20 @@ def main() -> None:
     parser.add_argument(
         "--batch-json",
         type=Path,
-        help=("JSON array (or an object with a 'samples' array). Each sample must contain "
-              "prompt, reference_video and track; output_path and per-sample overrides are optional."),
+        help=(
+            "JSON array (or an object with a 'samples' array). Each sample must contain "
+            "prompt, reference_video and track; output_path and per-sample overrides are optional."
+        ),
+    )
+    parser.add_argument(
+        "--sample-num",
+        type=int,
+        default=None,
+        help=(
+            "Generate SAMPLE_NUM videos for every input sample. The first video uses "
+            "the sample/base seed, and later videos use consecutive seeds. When this "
+            "argument is supplied, every sample is saved in its own subdirectory."
+        ),
     )
     parser.add_argument("--spatial-track-encoder-weights", type=Path)
     parser.add_argument("--track-prope-weights", type=Path)
@@ -816,6 +788,8 @@ def main() -> None:
     )
     args = parser.parse_args()
 
+    if args.sample_num is not None and args.sample_num < 1:
+        parser.error("--sample-num must be greater than or equal to 1")
 
     if args.batch_json is None:
         if not args.prompt:
@@ -823,7 +797,6 @@ def main() -> None:
         if not args.video_conditioning:
             parser.error("--video-conditioning is required when --batch-json is not used")
 
-    # Load mask video if provided via --conditioning-attention-mask
     conditioning_attention_mask = None
     conditioning_attention_strength = 1.0
     if args.conditioning_attention_mask is not None:
@@ -831,7 +804,7 @@ def main() -> None:
         conditioning_attention_strength = mask_strength
         conditioning_attention_mask = _load_mask_video(
             mask_path=mask_path,
-            height=args.height // 2,  # Stage 1 operates at half resolution
+            height=args.height // 2,
             width=args.width // 2,
             num_frames=args.num_frames,
         )
@@ -860,8 +833,6 @@ def main() -> None:
         summary_source_mode=args.summary_source_mode if args.track_summary_weights is not None else None,
     )
     result_directory.mkdir(parents=True, exist_ok=True)
-    # Separate the plain generated videos from the side-by-side concat videos
-    # into dedicated sub-directories under the result directory.
     generated_directory = result_directory / "generated"
     concat_directory = result_directory / "concat"
     generated_directory.mkdir(parents=True, exist_ok=True)
@@ -877,53 +848,119 @@ def main() -> None:
     if args.track_prope_weights and not args.batch_json:
         parser.error("Track-PRoPE needs per-sample tracks; use --batch-json")
 
+    sample_num = args.sample_num if args.sample_num is not None else 1
+    use_sample_subdirectories = args.sample_num is not None
+
     for index, sample in enumerate(samples):
         sample_frames = int(sample.get("num_frames", args.num_frames))
         sample_fps = float(sample.get("frame_rate", args.frame_rate))
-        output_path = _sample_output_path(generated_directory, sample.get("output_path"), index)
-        logging.info("Generating batch sample %d/%d -> %s", index + 1, len(samples), output_path)
-        video, audio = pipeline(
-            prompt=sample["prompt"], seed=int(sample.get("seed", args.seed)),
-            height=int(sample.get("height", args.height)), width=int(sample.get("width", args.width)),
-            num_frames=sample_frames, frame_rate=sample_fps, images=args.images,
-            video_conditioning=[(sample["reference_video"], float(sample.get("reference_strength", 1.0)))],
-            track=sample.get("track"), tiling_config=tiling_config,
-            conditioning_attention_strength=conditioning_attention_strength,
-            skip_stage_2=args.skip_stage_2,
-            conditioning_attention_mask=conditioning_attention_mask,
+        base_seed = int(sample.get("seed", args.seed))
+        base_output_path = Path(
+            _sample_output_path(
+                generated_directory,
+                sample.get("output_path"),
+                index,
+            )
         )
-        # Materialise the generated frames once so we can both save the plain
-        # video and build a side-by-side comparison against the reference video.
-        # ``video`` is a single-consumption iterator, so it must be drained here.
-        gen_frames = torch.cat([chunk.to("cpu") for chunk in video], dim=0)  # [F, H, W, C]
 
-        encode_video(video=gen_frames, fps=sample_fps, audio=audio, output_path=output_path,
-                     video_chunks_number=1)
+        if use_sample_subdirectories:
+            sample_generated_directory = generated_directory / base_output_path.stem
+            sample_concat_directory = concat_directory / base_output_path.stem
+            sample_generated_directory.mkdir(parents=True, exist_ok=True)
+            sample_concat_directory.mkdir(parents=True, exist_ok=True)
+        else:
+            sample_generated_directory = generated_directory
+            sample_concat_directory = concat_directory
 
-        if args.decode_mode:
-            decode_directory = result_directory / "generate_decode"
-            _decode_mono_diff_to_stereo(
-                video_path=output_path,
-                output_dir=decode_directory,
+        for generation_index in range(sample_num):
+            current_seed = base_seed + generation_index
+
+            if use_sample_subdirectories:
+                output_path = str(
+                    sample_generated_directory
+                    / f"seed_{current_seed}{base_output_path.suffix}"
+                )
+            else:
+                output_path = str(base_output_path)
+
+            logging.info(
+                "Generating batch sample %d/%d, variation %d/%d, seed=%d -> %s",
+                index + 1,
+                len(samples),
+                generation_index + 1,
+                sample_num,
+                current_seed,
+                output_path,
             )
 
-
-        reference_video = sample.get("reference_video")
-
-        if reference_video:
-            ref_frames = _load_reference_frames_for_concat(
-                reference_video=reference_video,
-                target_height=int(gen_frames.shape[1]),
-                frame_cap=int(gen_frames.shape[0]),
-                device=get_device(),
+            video, audio = pipeline(
+                prompt=sample["prompt"],
+                seed=current_seed,
+                height=int(sample.get("height", args.height)),
+                width=int(sample.get("width", args.width)),
+                num_frames=sample_frames,
+                frame_rate=sample_fps,
+                images=args.images,
+                video_conditioning=[
+                    (
+                        sample["reference_video"],
+                        float(sample.get("reference_strength", 1.0)),
+                    )
+                ],
+                track=sample.get("track"),
+                tiling_config=tiling_config,
+                conditioning_attention_strength=conditioning_attention_strength,
+                skip_stage_2=args.skip_stage_2,
+                conditioning_attention_mask=conditioning_attention_mask,
             )
-            if ref_frames is not None:
-                n = min(int(gen_frames.shape[0]), int(ref_frames.shape[0]))
-                # Side-by-side: reference on the left, generated on the right (width dim=2).
-                concat_frames = torch.cat([ref_frames[:n], gen_frames[:n]], dim=2)
-                concat_path = _concat_output_path(output_path, concat_directory)
-                encode_video(video=concat_frames, fps=sample_fps, audio=audio, output_path=concat_path,
-                             video_chunks_number=1)
+
+            gen_frames = torch.cat(
+                [chunk.to("cpu") for chunk in video],
+                dim=0,
+            )
+
+            encode_video(
+                video=gen_frames,
+                fps=sample_fps,
+                audio=audio,
+                output_path=output_path,
+                video_chunks_number=1,
+            )
+
+            if args.decode_mode:
+                decode_directory = result_directory / "generate_decode"
+                if use_sample_subdirectories:
+                    decode_directory = decode_directory / base_output_path.stem
+                _decode_mono_diff_to_stereo(
+                    video_path=output_path,
+                    output_dir=decode_directory,
+                )
+
+            reference_video = sample.get("reference_video")
+            if reference_video:
+                ref_frames = _load_reference_frames_for_concat(
+                    reference_video=reference_video,
+                    target_height=int(gen_frames.shape[1]),
+                    frame_cap=int(gen_frames.shape[0]),
+                    device=get_device(),
+                )
+                if ref_frames is not None:
+                    n = min(int(gen_frames.shape[0]), int(ref_frames.shape[0]))
+                    concat_frames = torch.cat(
+                        [ref_frames[:n], gen_frames[:n]],
+                        dim=2,
+                    )
+                    concat_path = _concat_output_path(
+                        output_path,
+                        sample_concat_directory,
+                    )
+                    encode_video(
+                        video=concat_frames,
+                        fps=sample_fps,
+                        audio=audio,
+                        output_path=concat_path,
+                        video_chunks_number=1,
+                    )
 
 
 def _read_batch_samples(path: Path) -> list[dict[str, Any]]:
@@ -958,14 +995,7 @@ def _result_directory(
     simple_summary_weights: str | Path | None,
     summary_source_mode: str | None = None,
 ) -> Path:
-    """Build the module-specific result directory below ``output_root``.
-
-    Checkpoint filenames are used verbatim, including their extension.
-    When ``summary_source_mode`` is provided, it is appended to the child
-    directory name so different summary source modes write to separate folders.
-    If the resulting directory already exists, a ``_v1`` / ``_v2`` / ... suffix
-    is appended so previous results are never overwritten.
-    """
+    """Build the module-specific result directory below ``output_root``."""
     names = []
     if track_prope_weights is not None:
         names.append(Path(track_prope_weights).expanduser().name)
@@ -999,11 +1029,7 @@ def _sample_output_path(result_directory: Path, requested_path: str | Path | Non
 
 
 def _concat_output_path(output_path: str, concat_directory: Path | None = None) -> str:
-    """Derive the side-by-side comparison path by appending ``_concat`` to the stem.
-
-    When ``concat_directory`` is provided, the resulting file is placed inside
-    that directory instead of alongside the generated video.
-    """
+    """Derive the side-by-side comparison path by appending ``_concat`` to the stem."""
     path = Path(output_path)
     filename = f"{path.stem}_concat{path.suffix}"
     if concat_directory is not None:
@@ -1017,20 +1043,11 @@ def _load_reference_frames_for_concat(
     frame_cap: int,
     device: torch.device,
 ) -> torch.Tensor | None:
-    """Load and format reference video frames for side-by-side concatenation.
-
-    Decodes up to ``frame_cap`` frames, resizes each to ``target_height`` while
-    preserving aspect ratio, and returns a tensor of shape ``[F, H, W, C]`` with
-    float values in ``[0, 1]`` on CPU (matching the generated-video chunk format).
-    Returns ``None`` when no frames could be decoded.
-    """
+    """Load and format reference video frames for side-by-side concatenation."""
     frames: list[torch.Tensor] = []
     for f in decode_video_by_frame(path=reference_video, frame_cap=frame_cap, device=device):
-        # f: [1, H, W, C] uint8 [0, 255]. Compute target width from the source
-        # aspect ratio so the reference is not distorted, rounded to an even value.
         src_h, src_w = int(f.shape[1]), int(f.shape[2])
         target_width = max(2, int(round(src_w * target_height / src_h)) // 2 * 2)
-        # resize_and_center_crop returns [1, C, F, H, W]; convert to [F, H, W, C].
         resized = resize_and_center_crop(f.to(torch.float32), target_height, target_width)
         frame = rearrange(resized, "b c f h w -> (b f) h w c").div_(255.0).clamp_(0.0, 1.0)
         frames.append(frame.to("cpu"))
@@ -1045,44 +1062,17 @@ def _load_mask_video(
     width: int,
     num_frames: int,
 ) -> torch.Tensor:
-    """Load a mask video and return a pixel-space tensor of shape (1, 1, F, H, W).
-    The mask video is loaded, resized to (height, width), converted to
-    grayscale, and normalised to [0, 1].
-    Args:
-        mask_path: Path to the mask video file.
-        height: Target height in pixels.
-        width: Target width in pixels.
-        num_frames: Maximum number of frames to load.
-    Returns:
-        Tensor of shape ``(1, 1, F, H, W)`` with values in ``[0, 1]``.
-    """
+    """Load a mask video and return a pixel-space tensor of shape (1, 1, F, H, W)."""
     device = get_device()
     frame_gen = decode_video_by_frame(path=mask_path, frame_cap=num_frames, device=device)
     mask_video = video_preprocess(frame_gen, height, width, torch.bfloat16, device)
-    # mask_video shape: (1, C, F, H, W) — take mean over channels for grayscale
-    mask = mask_video.mean(dim=1, keepdim=True)  # (1, 1, F, H, W)
-    # Normalise to [0, 1] — video_preprocess applies normalize_latent,
-    # so undo that: values are in [-1, 1], remap to [0, 1]
+    mask = mask_video.mean(dim=1, keepdim=True)
     mask = (mask + 1.0) / 2.0
     return mask.clamp(0.0, 1.0)
 
 
 def _decode_mono_diff_to_stereo(video_path: str | Path, output_dir: str | Path) -> Path:
-    """Decode a video's Mid/Side (mono diff) audio track back into Left/Right stereo.
-
-    Mirrors the ``decode`` path of ``wav_mid_side.py``:
-        1. ffmpeg extracts the stereo (M/D) PCM audio track.
-        2. Apply ``L = M + D`` / ``R = M - D`` to recover the original stereo.
-        3. ffmpeg muxes the new audio track with the original video stream
-           (``-c:v copy``) and writes the result under ``output_dir``.
-
-    Args:
-        video_path: Path to the generated video whose audio should be decoded.
-        output_dir: Directory in which to save the decoded video. Created if absent.
-
-    Returns:
-        The path to the decoded video file.
-    """
+    """Decode a video's Mid/Side audio track back into Left/Right stereo."""
     import shutil
     import subprocess
     import tempfile
@@ -1100,7 +1090,10 @@ def _decode_mono_diff_to_stereo(video_path: str | Path, output_dir: str | Path) 
 
     def _run_ffmpeg(cmd: list[str]) -> None:
         completed = subprocess.run(
-            cmd, check=False, stdout=subprocess.DEVNULL, stderr=subprocess.PIPE
+            cmd,
+            check=False,
+            stdout=subprocess.DEVNULL,
+            stderr=subprocess.PIPE,
         )
         if completed.returncode != 0:
             stderr = completed.stderr.decode("utf-8", errors="replace").strip()
@@ -1111,7 +1104,6 @@ def _decode_mono_diff_to_stereo(video_path: str | Path, output_dir: str | Path) 
         extracted_wav = tmpdir_path / "audio_in.wav"
         decoded_wav = tmpdir_path / "audio_out.wav"
 
-        # Step 1: extract the M/D audio as stereo PCM 16-bit WAV.
         _run_ffmpeg([
             "ffmpeg", "-y", "-loglevel", "error",
             "-i", str(video_path),
@@ -1122,7 +1114,6 @@ def _decode_mono_diff_to_stereo(video_path: str | Path, output_dir: str | Path) 
         if not extracted_wav.exists() or extracted_wav.stat().st_size == 0:
             raise RuntimeError(f"No usable audio track found in {video_path}")
 
-        # Step 2: Mid/Side -> Left/Right (L = M + D, R = M - D).
         audio, sample_rate = sf.read(str(extracted_wav), dtype="float64", always_2d=True)
         if audio.ndim != 2 or audio.shape[1] != 2:
             raise ValueError(
@@ -1135,7 +1126,6 @@ def _decode_mono_diff_to_stereo(video_path: str | Path, output_dir: str | Path) 
             raise ValueError("Decoded audio contains NaN or Inf values")
         sf.write(str(decoded_wav), stereo, sample_rate, format="WAV", subtype="PCM_16")
 
-        # Step 3: mux decoded audio with the original video stream.
         _run_ffmpeg([
             "ffmpeg", "-y", "-loglevel", "error",
             "-i", str(video_path),
