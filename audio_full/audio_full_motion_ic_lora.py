@@ -1,14 +1,21 @@
+import inspect
 import logging
-from collections.abc import Iterator
+from collections.abc import Iterator, Mapping
+from pathlib import Path
 
 import torch
+from safetensors.torch import load_file as load_safetensors_file
 
 from ltx_core.components.guiders import MultiModalGuider, MultiModalGuiderParams
 from ltx_core.components.noisers import GaussianNoiser
 from ltx_core.components.schedulers import LTX2Scheduler
 from ltx_core.conditioning import ConditioningItem
 from ltx_core.loader import LoraPathStrengthAndSDOps
-from ltx_core.loader.registry import Registry
+from ltx_core.loader.primitives import StateDict
+from ltx_core.loader.registry import DummyRegistry, Registry
+from ltx_core.loader.sft_loader import SafetensorsModelStateDictLoader
+from ltx_core.loader.single_gpu_model_builder import SingleGPUModelBuilder
+from ltx_core.model.transformer import LTXModelConfigurator, LTXV_MODEL_COMFY_RENAMING_MAP
 from ltx_core.model.transformer.compiling import CompilationConfig
 from ltx_core.model.video_vae import TilingConfig, VideoEncoder, get_video_chunks_number
 from ltx_core.quantization import QuantizationPolicy
@@ -40,24 +47,231 @@ from ltx_pipelines.utils.media_io import decode_video_by_frame, encode_video, vi
 from ltx_pipelines.utils.types import ModalitySpec, OffloadMode
 
 
+_AUDIO_PREFIXES = (
+    "audio_patchify_proj.",
+    "audio_caption_projection.",
+    "audio_adaln_single.",
+    "audio_prompt_adaln_single.",
+    "audio_scale_shift_table",
+    "audio_norm_out.",
+    "audio_proj_out.",
+    "av_ca_audio_scale_shift_adaln_single.",
+    "av_ca_v2a_gate_adaln_single.",
+)
+_AUDIO_MARKERS = (
+    ".audio_attn1.",
+    ".audio_attn2.",
+    ".audio_ff.",
+    ".audio_scale_shift_table",
+    ".audio_prompt_scale_shift_table",
+    ".video_to_audio_attn.",
+    ".scale_shift_table_a2v_ca_audio",
+)
+
+
+def _checkpoint_key(raw: str) -> str:
+    """Normalize trainer/PEFT wrapper prefixes to the native LTX transformer key."""
+    key = raw
+    for prefix in ("model.diffusion_model.", "diffusion_model."):
+        if key.startswith(prefix):
+            key = key[len(prefix) :]
+            break
+
+    prefixes = ("_fsdp_wrapped_module.", "_orig_mod.", "module.", "base_model.model.")
+    changed = True
+    while changed:
+        changed = False
+        for prefix in prefixes:
+            if key.startswith(prefix):
+                key = key[len(prefix) :]
+                changed = True
+
+    return key.replace(".base_layer.", ".")
+
+
+def _is_audio_param(raw: str) -> bool:
+    """Match exactly the audio-full parameter set used by trainer_audio_full.py."""
+    name = _checkpoint_key(raw)
+    if ".lora_" in name:
+        return False
+    return name.startswith(_AUDIO_PREFIXES) or any(marker in name for marker in _AUDIO_MARKERS)
+
+
+def _extract_tensor_state_dict(payload: object, path: str) -> dict[str, torch.Tensor]:
+    """Extract a tensor state dict from a .pt/.pth payload."""
+    if isinstance(payload, Mapping):
+        for field in ("state_dict", "model_state_dict", "audio_state_dict", "model"):
+            nested = payload.get(field)
+            if isinstance(nested, Mapping) and any(isinstance(v, torch.Tensor) for v in nested.values()):
+                payload = nested
+                break
+
+    if not isinstance(payload, Mapping):
+        raise RuntimeError(f"Audio checkpoint {path} does not contain a state dict")
+
+    tensors = {str(k): v for k, v in payload.items() if isinstance(v, torch.Tensor)}
+    if not tensors:
+        raise RuntimeError(f"Audio checkpoint {path} contains no tensors")
+    return tensors
+
+
+class AudioOverlayModelStateDictLoader:
+    """
+    Load the normal LTX model checkpoint, then replace only the audio-full tensors
+    with a fine-tuned audio checkpoint before LoRA fusion happens.
+
+    The audio checkpoint may be the trainer's native .safetensors file or a .pt/.pth
+    state dict. LoRA files are delegated unchanged to the normal safetensors loader.
+    """
+
+    def __init__(self, audio_checkpoint_path: str) -> None:
+        self.audio_checkpoint_path = str(Path(audio_checkpoint_path).expanduser().resolve())
+        self._base_loader = SafetensorsModelStateDictLoader()
+
+    def metadata(self, path: str) -> dict:
+        return self._base_loader.metadata(path)
+
+    def _load_audio_checkpoint(self) -> dict[str, torch.Tensor]:
+        path = Path(self.audio_checkpoint_path)
+        suffix = path.suffix.lower()
+
+        if suffix == ".safetensors":
+            raw_state = load_safetensors_file(str(path), device="cpu")
+        elif suffix in {".pt", ".pth", ".ckpt"}:
+            try:
+                payload = torch.load(str(path), map_location="cpu", weights_only=True)
+            except TypeError:
+                payload = torch.load(str(path), map_location="cpu")
+            raw_state = _extract_tensor_state_dict(payload, str(path))
+        else:
+            raise ValueError(
+                f"Unsupported audio checkpoint format: {path}. "
+                "Expected .safetensors, .pt, .pth, or .ckpt."
+            )
+
+        audio_state: dict[str, torch.Tensor] = {}
+        ignored = 0
+        for raw_key, value in raw_state.items():
+            key = _checkpoint_key(raw_key)
+            if not _is_audio_param(key):
+                ignored += 1
+                continue
+            if key in audio_state:
+                raise RuntimeError(f"Duplicate audio checkpoint key after normalization: {key}")
+            audio_state[key] = value.detach().cpu()
+
+        if not audio_state:
+            raise RuntimeError(f"No audio-full weights found in audio checkpoint: {path}")
+        if ignored:
+            logging.info("[Audio CKPT] Ignored %d non-audio tensor(s) from %s", ignored, path)
+        return audio_state
+
+    def load(self, path, sd_ops=None, device: torch.device | None = None) -> StateDict:
+        paths = path if isinstance(path, list) else [path]
+        resolved_audio = self.audio_checkpoint_path
+        audio_matches = [p for p in paths if str(Path(p).expanduser().resolve()) == resolved_audio]
+
+        # LoRA loading and all other ordinary safetensors loads use the stock loader.
+        if not audio_matches:
+            return self._base_loader.load(path, sd_ops=sd_ops, device=device)
+        if len(audio_matches) != 1:
+            raise RuntimeError(f"Audio checkpoint appears multiple times in model paths: {resolved_audio}")
+
+        base_paths = [p for p in paths if str(Path(p).expanduser().resolve()) != resolved_audio]
+        if not base_paths:
+            raise RuntimeError("Audio overlay loader requires the base LTX checkpoint together with --audio-ckpt")
+
+        base_arg = base_paths[0] if len(base_paths) == 1 else base_paths
+        base_state = self._base_loader.load(base_arg, sd_ops=sd_ops, device=device)
+        audio_state = self._load_audio_checkpoint()
+
+        expected_audio_keys = {key for key in base_state.sd if _is_audio_param(key)}
+        source_audio_keys = set(audio_state)
+        if source_audio_keys != expected_audio_keys:
+            missing = sorted(expected_audio_keys - source_audio_keys)[:30]
+            unexpected = sorted(source_audio_keys - expected_audio_keys)[:30]
+            raise RuntimeError(
+                "Audio checkpoint mismatch; "
+                f"missing={missing}, unexpected={unexpected}"
+            )
+
+        target_device = device or base_state.device
+        merged = dict(base_state.sd)
+        for key, src in audio_state.items():
+            dst = base_state.sd[key]
+            if src.shape != dst.shape:
+                raise RuntimeError(
+                    f"Audio checkpoint shape mismatch for {key}: "
+                    f"checkpoint={tuple(src.shape)}, model={tuple(dst.shape)}"
+                )
+            merged[key] = src.to(device=target_device, dtype=dst.dtype, non_blocking=True)
+
+        logging.info(
+            "[Audio CKPT] Overlaid %d fine-tuned audio tensors from %s before LoRA fusion",
+            len(audio_state),
+            self.audio_checkpoint_path,
+        )
+        return StateDict(
+            sd=merged,
+            device=target_device,
+            size=sum(tensor.nbytes for tensor in merged.values()),
+            dtype={tensor.dtype for tensor in merged.values()},
+        )
+
+
+def _build_audio_overlay_stage(
+    checkpoint_path: str,
+    audio_ckpt: str,
+    dtype: torch.dtype,
+    device: torch.device,
+    loras: tuple[LoraPathStrengthAndSDOps, ...],
+    registry: Registry,
+) -> DiffusionStage:
+    """Build a DiffusionStage whose base model is dev + fine-tuned audio weights."""
+    builder = SingleGPUModelBuilder(
+        model_class_configurator=LTXModelConfigurator,
+        model_path=(checkpoint_path, audio_ckpt),
+        model_sd_ops=LTXV_MODEL_COMFY_RENAMING_MAP,
+        loras=loras,
+        model_loader=AudioOverlayModelStateDictLoader(audio_ckpt),
+        registry=registry,
+    )
+
+    # LTX's DiffusionStage constructor changed in newer releases. Support both
+    # the older checkpoint_path+transformer_builder API and the newer builder API.
+    parameters = inspect.signature(DiffusionStage.__init__).parameters
+    if "transformer_builder" in parameters:
+        return DiffusionStage(
+            checkpoint_path,
+            dtype,
+            device,
+            loras=loras,
+            registry=registry,
+            offload_mode=OffloadMode.NONE,
+            transformer_builder=builder,
+        )
+
+    return DiffusionStage(builder, dtype, device)
+
+
 class ICLoraPipeline:
     """
     Two-stage video generation pipeline with In-Context (IC) LoRA support
-    using the non-distilled LTX-2.3 base checkpoint.
+    using the non-distilled LTX-2.3 base checkpoint plus a fine-tuned audio branch.
 
     Stage 1 runs the full/dev model with the regular LTX2 sigma schedule and
     multimodal CFG/STG guidance. IC-LoRA is applied in Stage 1 together with
     the reference-video conditioning.
 
-    Stage 2 upsamples by 2x and refines with the distilled Stage-2 schedule.
-    As in the official non-distilled two-stage pipeline, Stage 2 uses a
-    distilled LoRA on top of the same full/dev base checkpoint and does not
-    re-apply the IC-LoRA.
+    The fine-tuned audio checkpoint is overlaid on the dev transformer before
+    LoRA fusion. Stage 2 uses the same audio-overlaid dev base and then fuses
+    the distilled refinement LoRA.
     """
 
     def __init__(
         self,
         checkpoint_path: str,
+        audio_ckpt: str,
         distilled_lora: list[LoraPathStrengthAndSDOps],
         spatial_upsampler_path: str,
         gemma_root: str,
@@ -68,9 +282,29 @@ class ICLoraPipeline:
         compilation_config: CompilationConfig | None = None,
         offload_mode: OffloadMode = OffloadMode.NONE,
     ):
+        audio_ckpt_path = Path(audio_ckpt).expanduser().resolve()
+        if not audio_ckpt_path.is_file():
+            raise FileNotFoundError(f"Audio checkpoint not found: {audio_ckpt_path}")
+        if offload_mode != OffloadMode.NONE:
+            raise ValueError(
+                "--audio-ckpt currently requires --offload none because the fine-tuned "
+                "audio weights must be overlaid before LoRA fusion."
+            )
+        if quantization is not None:
+            raise ValueError(
+                "--audio-ckpt currently does not support --quantization. "
+                "Load the fine-tuned audio branch in bf16/full precision."
+            )
+        if compilation_config is not None:
+            raise ValueError(
+                "--audio-ckpt currently does not support --compile because compilation "
+                "rewrites transformer state-dict keys before loading."
+            )
+
         self.device = device or get_device()
         self.dtype = torch.bfloat16
         self._scheduler = LTX2Scheduler()
+        self.audio_ckpt = str(audio_ckpt_path)
 
         self.prompt_encoder = PromptEncoder(
             checkpoint_path,
@@ -82,28 +316,31 @@ class ICLoraPipeline:
         )
 
         self.image_conditioner = ImageConditioner(checkpoint_path, self.dtype, self.device, registry=registry)
-        self.stage_1 = DiffusionStage(
-            checkpoint_path,
-            self.dtype,
-            self.device,
+        stage_registry = registry or DummyRegistry()
+
+        # Loading order is important:
+        #   dev base -> fine-tuned audio base -> IC-LoRA
+        # This reproduces training where the audio base was trainable while IC-LoRA stayed frozen.
+        self.stage_1 = _build_audio_overlay_stage(
+            checkpoint_path=checkpoint_path,
+            audio_ckpt=self.audio_ckpt,
+            dtype=self.dtype,
+            device=self.device,
             loras=tuple(loras),
-            quantization=quantization,
-            registry=registry,
-            compilation_config=compilation_config,
-            offload_mode=offload_mode,
+            registry=stage_registry,
         )
-        self.stage_2 = DiffusionStage(
-            checkpoint_path,
-            self.dtype,
-            self.device,
-            # IC-LoRA is intentionally Stage-1-only. Stage 2 uses the
-            # dedicated distilled refinement LoRA from the official dev pipeline.
+
+        # Stage 2 uses the same fine-tuned audio base, then fuses the official
+        # distilled refinement LoRA. The final decoded audio still comes from Stage 1.
+        self.stage_2 = _build_audio_overlay_stage(
+            checkpoint_path=checkpoint_path,
+            audio_ckpt=self.audio_ckpt,
+            dtype=self.dtype,
+            device=self.device,
             loras=tuple(distilled_lora),
-            quantization=quantization,
-            registry=registry,
-            compilation_config=compilation_config,
-            offload_mode=offload_mode,
+            registry=stage_registry,
         )
+
         self.upsampler = VideoUpsampler(
             checkpoint_path, spatial_upsampler_path, self.dtype, self.device, registry=registry
         )
@@ -344,6 +581,16 @@ def main() -> None:
     parser = default_2_stage_arg_parser(params=params)
 
     parser.add_argument(
+        "--audio-ckpt",
+        type=str,
+        required=True,
+        help=(
+            "Path to the fine-tuned LTX audio-branch checkpoint. Supports the "
+            "audio_full_weights_step_*.safetensors format produced by trainer_audio_full.py "
+            "and tensor state dicts saved as .pt/.pth/.ckpt."
+        ),
+    )
+    parser.add_argument(
         "--video-conditioning",
         action=VideoConditioningAction,
         nargs=2,
@@ -390,6 +637,7 @@ def main() -> None:
 
     pipeline = ICLoraPipeline(
         checkpoint_path=args.checkpoint_path,
+        audio_ckpt=args.audio_ckpt,
         distilled_lora=args.distilled_lora,
         spatial_upsampler_path=args.spatial_upsampler_path,
         gemma_root=args.gemma_root,
