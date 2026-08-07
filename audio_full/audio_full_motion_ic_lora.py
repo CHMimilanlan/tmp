@@ -3,7 +3,9 @@ from collections.abc import Iterator
 
 import torch
 
+from ltx_core.components.guiders import MultiModalGuider, MultiModalGuiderParams
 from ltx_core.components.noisers import GaussianNoiser
+from ltx_core.components.schedulers import LTX2Scheduler
 from ltx_core.conditioning import ConditioningItem
 from ltx_core.loader import LoraPathStrengthAndSDOps
 from ltx_core.loader.registry import Registry
@@ -20,7 +22,7 @@ from ltx_pipelines.utils.args import (
     ImageConditioningInput,
     VideoConditioningAction,
     VideoMaskConditioningAction,
-    default_2_stage_distilled_arg_parser,
+    default_2_stage_arg_parser,
     detect_checkpoint_path,
 )
 from ltx_pipelines.utils.blocks import (
@@ -31,12 +33,8 @@ from ltx_pipelines.utils.blocks import (
     VideoDecoder,
     VideoUpsampler,
 )
-from ltx_pipelines.utils.constants import (
-    DISTILLED_SIGMAS,
-    STAGE_2_DISTILLED_SIGMAS,
-    detect_params,
-)
-from ltx_pipelines.utils.denoisers import SimpleDenoiser
+from ltx_pipelines.utils.constants import STAGE_2_DISTILLED_SIGMAS, detect_params
+from ltx_pipelines.utils.denoisers import GuidedDenoiser, SimpleDenoiser
 from ltx_pipelines.utils.helpers import assert_resolution, combined_image_conditionings, get_device
 from ltx_pipelines.utils.media_io import decode_video_by_frame, encode_video, video_preprocess
 from ltx_pipelines.utils.types import ModalitySpec, OffloadMode
@@ -44,18 +42,23 @@ from ltx_pipelines.utils.types import ModalitySpec, OffloadMode
 
 class ICLoraPipeline:
     """
-    Two-stage video generation pipeline with In-Context (IC) LoRA support.
-    Allows conditioning the generated video on control signals such as depth maps,
-    human pose, or image edges via the video_conditioning parameter.
-    The specific IC-LoRA model should be provided via the loras parameter.
-    Stage 1 generates video at half of the target resolution, then Stage 2 upsamples
-    by 2x and refines with additional denoising steps for higher quality output.
-    Both stages use distilled models for efficiency.
+    Two-stage video generation pipeline with In-Context (IC) LoRA support
+    using the non-distilled LTX-2.3 base checkpoint.
+
+    Stage 1 runs the full/dev model with the regular LTX2 sigma schedule and
+    multimodal CFG/STG guidance. IC-LoRA is applied in Stage 1 together with
+    the reference-video conditioning.
+
+    Stage 2 upsamples by 2x and refines with the distilled Stage-2 schedule.
+    As in the official non-distilled two-stage pipeline, Stage 2 uses a
+    distilled LoRA on top of the same full/dev base checkpoint and does not
+    re-apply the IC-LoRA.
     """
 
     def __init__(
         self,
-        distilled_checkpoint_path: str,
+        checkpoint_path: str,
+        distilled_lora: list[LoraPathStrengthAndSDOps],
         spatial_upsampler_path: str,
         gemma_root: str,
         loras: list[LoraPathStrengthAndSDOps],
@@ -67,19 +70,20 @@ class ICLoraPipeline:
     ):
         self.device = device or get_device()
         self.dtype = torch.bfloat16
+        self._scheduler = LTX2Scheduler()
 
         self.prompt_encoder = PromptEncoder(
-            distilled_checkpoint_path,
+            checkpoint_path,
             gemma_root,
             self.dtype,
             self.device,
             registry=registry,
             offload_mode=offload_mode,
         )
-        
-        self.image_conditioner = ImageConditioner(distilled_checkpoint_path, self.dtype, self.device, registry=registry)
+
+        self.image_conditioner = ImageConditioner(checkpoint_path, self.dtype, self.device, registry=registry)
         self.stage_1 = DiffusionStage(
-            distilled_checkpoint_path,
+            checkpoint_path,
             self.dtype,
             self.device,
             loras=tuple(loras),
@@ -89,24 +93,24 @@ class ICLoraPipeline:
             offload_mode=offload_mode,
         )
         self.stage_2 = DiffusionStage(
-            distilled_checkpoint_path,
+            checkpoint_path,
             self.dtype,
             self.device,
-            loras=(),
+            # IC-LoRA is intentionally Stage-1-only. Stage 2 uses the
+            # dedicated distilled refinement LoRA from the official dev pipeline.
+            loras=tuple(distilled_lora),
             quantization=quantization,
             registry=registry,
             compilation_config=compilation_config,
             offload_mode=offload_mode,
         )
         self.upsampler = VideoUpsampler(
-            distilled_checkpoint_path, spatial_upsampler_path, self.dtype, self.device, registry=registry
+            checkpoint_path, spatial_upsampler_path, self.dtype, self.device, registry=registry
         )
-        self.video_decoder = VideoDecoder(distilled_checkpoint_path, self.dtype, self.device, registry=registry)
-        self.audio_decoder = AudioDecoder(distilled_checkpoint_path, self.dtype, self.device, registry=registry)
+        self.video_decoder = VideoDecoder(checkpoint_path, self.dtype, self.device, registry=registry)
+        self.audio_decoder = AudioDecoder(checkpoint_path, self.dtype, self.device, registry=registry)
 
-        # Read reference scale factors from LoRA metadata.
-        # IC-LoRAs trained with scaled reference videos store these factors
-        # so inference can resize/subsample reference videos to match training conditions.
+        # Read reference scale factors from IC-LoRA metadata.
         self.reference_downscale_factor = 1
         self.reference_temporal_scale_factor = 1
         for lora in loras:
@@ -119,6 +123,7 @@ class ICLoraPipeline:
                         f"specifies {scale}. Cannot combine LoRAs with different reference scales."
                     )
                 self.reference_downscale_factor = scale
+
             temporal = read_lora_reference_temporal_scale_factor(lora.path)
             if temporal != 1:
                 if self.reference_temporal_scale_factor not in (1, temporal):
@@ -132,11 +137,15 @@ class ICLoraPipeline:
     def __call__(  # noqa: PLR0913
         self,
         prompt: str,
+        negative_prompt: str,
         seed: int,
         height: int,
         width: int,
         num_frames: int,
         frame_rate: float,
+        num_inference_steps: int,
+        video_guider_params: MultiModalGuiderParams,
+        audio_guider_params: MultiModalGuiderParams,
         images: list[ImageConditioningInput],
         video_conditioning: list[tuple[str, float]],
         enhance_prompt: bool = False,
@@ -144,40 +153,16 @@ class ICLoraPipeline:
         conditioning_attention_strength: float = 1.0,
         skip_stage_2: bool = False,
         conditioning_attention_mask: torch.Tensor | None = None,
-        stage_1_sigmas: torch.Tensor = DISTILLED_SIGMAS,
+        max_batch_size: int = 1,
+        stage_1_sigmas: torch.Tensor | None = None,
         stage_2_sigmas: torch.Tensor = STAGE_2_DISTILLED_SIGMAS,
     ) -> tuple[Iterator[torch.Tensor], Audio]:
         """
-        Generate video with IC-LoRA conditioning.
-        Args:
-            prompt: Text prompt for video generation.
-            seed: Random seed for reproducibility.
-            height: Output video height in pixels (must be divisible by 64).
-            width: Output video width in pixels (must be divisible by 64).
-            num_frames: Number of frames to generate.
-            frame_rate: Output video frame rate.
-            images: List of (path, frame_idx, strength) tuples for image conditioning.
-            video_conditioning: List of (path, strength) tuples for IC-LoRA video conditioning.
-            enhance_prompt: Whether to enhance the prompt using the text encoder.
-            tiling_config: Optional tiling configuration for VAE decoding.
-            conditioning_attention_strength: Scale factor for IC-LoRA conditioning attention.
-                Controls how strongly the conditioning video influences the output.
-                0.0 = ignore conditioning, 1.0 = full conditioning influence. Default 1.0.
-                When conditioning_attention_mask is provided, the mask is multiplied by
-                this strength before being passed to the conditioning items.
-            skip_stage_2: If True, skip Stage 2 upsampling and refinement. Output will be
-                at half resolution (height//2, width//2). Default is False.
-            conditioning_attention_mask: Optional pixel-space attention mask with the same
-                spatial-temporal dimensions as the input reference video. Shape should be
-                (B, 1, F, H, W) or (1, 1, F, H, W) where F, H, W match the reference
-                video's pixel dimensions. Values in [0, 1].
-                The mask is downsampled to latent space using VAE scale factors (with
-                causal temporal handling for the first frame), then multiplied by
-                conditioning_attention_strength.
-                When None (default): scalar conditioning_attention_strength is used
-                directly.
-        Returns:
-            Tuple of (video_iterator, audio_tensor).
+        Generate video with IC-LoRA conditioning using the non-distilled base model.
+
+        Stage 1 uses the regular LTX2 scheduler and guided denoising (CFG/STG/
+        cross-modal guidance). Stage 2 uses the distilled refinement schedule
+        with the dedicated distilled LoRA.
         """
         assert_resolution(height=height, width=width, is_two_stage=True)
         if not (0.0 <= conditioning_attention_strength <= 1.0):
@@ -188,15 +173,16 @@ class ICLoraPipeline:
         generator = torch.Generator(device=self.device).manual_seed(seed)
         noiser = GaussianNoiser(generator=generator)
 
-        (ctx_p,) = self.prompt_encoder(
-            [prompt],
+        ctx_p, ctx_n = self.prompt_encoder(
+            [prompt, negative_prompt],
             enhance_first_prompt=enhance_prompt,
             enhance_prompt_image=images[0][0] if len(images) > 0 else None,
             enhance_prompt_seed=seed,
         )
-        video_context, audio_context = ctx_p.video_encoding, ctx_p.audio_encoding
+        v_context_p, a_context_p = ctx_p.video_encoding, ctx_p.audio_encoding
+        v_context_n, a_context_n = ctx_n.video_encoding, ctx_n.audio_encoding
 
-        # Stage 1: Initial low resolution video generation.
+        # Stage 1: full/dev model at half resolution with guided denoising.
         stage_1_output_shape = VideoPixelShape(
             batch=1,
             frames=num_frames,
@@ -205,7 +191,6 @@ class ICLoraPipeline:
             fps=frame_rate,
         )
 
-        # Encode conditionings using the video encoder block
         stage_1_conditionings = self.image_conditioner(
             lambda enc: self._create_conditionings(
                 images=images,
@@ -219,37 +204,56 @@ class ICLoraPipeline:
             )
         )
 
-        stage_1_sigmas = stage_1_sigmas.to(dtype=torch.float32, device=self.device)
+        sigmas = (
+            stage_1_sigmas if stage_1_sigmas is not None else self._scheduler.execute(steps=num_inference_steps)
+        ).to(dtype=torch.float32, device=self.device)
 
         video_state, audio_state = self.stage_1(
-            denoiser=SimpleDenoiser(video_context, audio_context),
-            sigmas=stage_1_sigmas,
+            denoiser=GuidedDenoiser(
+                v_context=v_context_p,
+                a_context=a_context_p,
+                video_guider=MultiModalGuider(
+                    params=video_guider_params,
+                    negative_context=v_context_n,
+                ),
+                audio_guider=MultiModalGuider(
+                    params=audio_guider_params,
+                    negative_context=a_context_n,
+                ),
+            ),
+            sigmas=sigmas,
             noiser=noiser,
             width=stage_1_output_shape.width,
             height=stage_1_output_shape.height,
             frames=num_frames,
             fps=frame_rate,
             video=ModalitySpec(
-                context=video_context,
+                context=v_context_p,
                 conditionings=stage_1_conditionings,
             ),
             audio=ModalitySpec(
-                context=audio_context,
+                context=a_context_p,
             ),
+            max_batch_size=max_batch_size,
         )
 
         if skip_stage_2:
-            # Skip Stage 2: Decode directly from Stage 1 output at half resolution
             logging.info("[IC-LoRA] Skipping Stage 2 (--skip-stage-2 enabled)")
             decoded_video = self.video_decoder(video_state.latent, tiling_config, generator)
             decoded_audio = self.audio_decoder(audio_state.latent)
             return decoded_video, decoded_audio
 
-        # Stage 2: Upsample and refine the video at higher resolution with distilled LORA.
+        # Stage 2: upsample and refine with the distilled Stage-2 LoRA/schedule.
         upscaled_video_latent = self.upsampler(video_state.latent[:1])
 
         stage_2_sigmas = stage_2_sigmas.to(dtype=torch.float32, device=self.device)
-        stage_2_output_shape = VideoPixelShape(batch=1, frames=num_frames, width=width, height=height, fps=frame_rate)
+        stage_2_output_shape = VideoPixelShape(
+            batch=1,
+            frames=num_frames,
+            width=width,
+            height=height,
+            fps=frame_rate,
+        )
         stage_2_conditionings = self.image_conditioner(
             lambda enc: combined_image_conditionings(
                 images=images,
@@ -261,8 +265,10 @@ class ICLoraPipeline:
             )
         )
 
-        video_state, audio_state = self.stage_2(
-            denoiser=SimpleDenoiser(video_context, audio_context),
+        # Keep Stage-1 audio as the final audio, matching the official non-distilled
+        # two-stage pipeline. Stage 2 is used to refine the upscaled video.
+        video_state, _ = self.stage_2(
+            denoiser=SimpleDenoiser(v_context_p, a_context_p),
             sigmas=stage_2_sigmas,
             noiser=noiser,
             width=width,
@@ -270,13 +276,13 @@ class ICLoraPipeline:
             frames=num_frames,
             fps=frame_rate,
             video=ModalitySpec(
-                context=video_context,
+                context=v_context_p,
                 conditionings=stage_2_conditionings,
                 noise_scale=stage_2_sigmas[0].item(),
                 initial_latent=upscaled_video_latent,
             ),
             audio=ModalitySpec(
-                context=audio_context,
+                context=a_context_p,
                 noise_scale=stage_2_sigmas[0].item(),
                 initial_latent=audio_state.latent,
             ),
@@ -297,20 +303,6 @@ class ICLoraPipeline:
         conditioning_attention_strength: float = 1.0,
         conditioning_attention_mask: torch.Tensor | None = None,
     ) -> list[ConditioningItem]:
-        """
-        Create conditioning items for video generation.
-        Args:
-            conditioning_attention_strength: Scalar attention weight in [0, 1].
-                If conditioning_attention_mask is also provided, the downsampled mask
-                is multiplied by this strength. Otherwise this scalar is passed
-                directly as the attention mask.
-            conditioning_attention_mask: Optional pixel-space attention mask with shape
-                (B, 1, F_pixel, H_pixel, W_pixel) matching the reference video's
-                pixel dimensions. Downsampled to latent space with causal temporal
-                handling, then multiplied by conditioning_attention_strength.
-        Returns:
-            List of conditioning items. IC-LoRA conditionings are appended last.
-        """
         conditionings = combined_image_conditionings(
             images=images,
             height=height,
@@ -345,9 +337,12 @@ class ICLoraPipeline:
 @torch.inference_mode()
 def main() -> None:
     logging.basicConfig(level=logging.INFO)
-    checkpoint_path = detect_checkpoint_path(distilled=True)
+
+    # Non-distilled/full LTX-2.3 checkpoint, e.g. ltx-2.3-22b-dev.safetensors.
+    checkpoint_path = detect_checkpoint_path(distilled=False)
     params = detect_params(checkpoint_path)
-    parser = default_2_stage_distilled_arg_parser(params=params)
+    parser = default_2_stage_arg_parser(params=params)
+
     parser.add_argument(
         "--video-conditioning",
         action=VideoConditioningAction,
@@ -375,13 +370,12 @@ def main() -> None:
         "--skip-stage-2",
         action="store_true",
         help=(
-            "Skip Stage 2 upsampling and refinement. Output will be at half resolution "
-            "(height//2, width//2). Useful for faster iteration or when GPU memory is limited."
+            "Skip Stage 2 upsampling and distilled-LoRA refinement. Output will be "
+            "at half resolution (height//2, width//2)."
         ),
     )
     args = parser.parse_args()
 
-    # Load mask video if provided via --conditioning-attention-mask
     conditioning_attention_mask = None
     conditioning_attention_strength = 1.0
     if args.conditioning_attention_mask is not None:
@@ -389,13 +383,14 @@ def main() -> None:
         conditioning_attention_strength = mask_strength
         conditioning_attention_mask = _load_mask_video(
             mask_path=mask_path,
-            height=args.height // 2,  # Stage 1 operates at half resolution
+            height=args.height // 2,
             width=args.width // 2,
             num_frames=args.num_frames,
         )
 
     pipeline = ICLoraPipeline(
-        distilled_checkpoint_path=args.distilled_checkpoint_path,
+        checkpoint_path=args.checkpoint_path,
+        distilled_lora=args.distilled_lora,
         spatial_upsampler_path=args.spatial_upsampler_path,
         gemma_root=args.gemma_root,
         loras=tuple(args.lora) if args.lora else (),
@@ -408,17 +403,37 @@ def main() -> None:
 
     video, audio = pipeline(
         prompt=args.prompt,
+        negative_prompt=args.negative_prompt,
         seed=args.seed,
         height=args.height,
         width=args.width,
         num_frames=args.num_frames,
         frame_rate=args.frame_rate,
+        num_inference_steps=args.num_inference_steps,
+        video_guider_params=MultiModalGuiderParams(
+            cfg_scale=args.video_cfg_guidance_scale,
+            stg_scale=args.video_stg_guidance_scale,
+            rescale_scale=args.video_rescale_scale,
+            modality_scale=args.a2v_guidance_scale,
+            skip_step=args.video_skip_step,
+            stg_blocks=args.video_stg_blocks,
+        ),
+        audio_guider_params=MultiModalGuiderParams(
+            cfg_scale=args.audio_cfg_guidance_scale,
+            stg_scale=args.audio_stg_guidance_scale,
+            rescale_scale=args.audio_rescale_scale,
+            modality_scale=args.v2a_guidance_scale,
+            skip_step=args.audio_skip_step,
+            stg_blocks=args.audio_stg_blocks,
+        ),
         images=args.images,
         video_conditioning=args.video_conditioning,
+        enhance_prompt=args.enhance_prompt,
         tiling_config=tiling_config,
         conditioning_attention_strength=conditioning_attention_strength,
         skip_stage_2=args.skip_stage_2,
         conditioning_attention_mask=conditioning_attention_mask,
+        max_batch_size=args.max_batch_size,
     )
 
     encode_video(
@@ -436,24 +451,11 @@ def _load_mask_video(
     width: int,
     num_frames: int,
 ) -> torch.Tensor:
-    """Load a mask video and return a pixel-space tensor of shape (1, 1, F, H, W).
-    The mask video is loaded, resized to (height, width), converted to
-    grayscale, and normalised to [0, 1].
-    Args:
-        mask_path: Path to the mask video file.
-        height: Target height in pixels.
-        width: Target width in pixels.
-        num_frames: Maximum number of frames to load.
-    Returns:
-        Tensor of shape ``(1, 1, F, H, W)`` with values in ``[0, 1]``.
-    """
+    """Load a mask video and return a pixel-space tensor of shape (1, 1, F, H, W)."""
     device = get_device()
     frame_gen = decode_video_by_frame(path=mask_path, frame_cap=num_frames, device=device)
     mask_video = video_preprocess(frame_gen, height, width, torch.bfloat16, device)
-    # mask_video shape: (1, C, F, H, W) — take mean over channels for grayscale
-    mask = mask_video.mean(dim=1, keepdim=True)  # (1, 1, F, H, W)
-    # Normalise to [0, 1] — video_preprocess applies normalize_latent,
-    # so undo that: values are in [-1, 1], remap to [0, 1]
+    mask = mask_video.mean(dim=1, keepdim=True)
     mask = (mask + 1.0) / 2.0
     return mask.clamp(0.0, 1.0)
 
