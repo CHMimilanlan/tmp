@@ -582,6 +582,57 @@ def run_logged_command(
             raise subprocess.CalledProcessError(completed.returncode, command)
 
 
+def read_log_tail(log_path: str | None, max_lines: int = 80) -> str:
+    """Read the last lines of a task log without letting reporting failures crash the batch."""
+    if not log_path:
+        return ""
+
+    path = Path(log_path)
+    if not path.is_file():
+        return ""
+
+    try:
+        with path.open("r", encoding="utf-8", errors="replace") as f:
+            lines = f.readlines()
+    except OSError as exc:
+        return f"<failed to read log: {exc}>"
+
+    return "".join(lines[-max_lines:]).rstrip()
+
+
+def print_failure_details(result: dict[str, Any], max_log_lines: int = 80) -> None:
+    """Print the useful error context immediately after a task is reported FAILED."""
+    separator = "=" * 100
+    print(separator, file=sys.stderr, flush=True)
+    print(
+        f"FAILED DETAIL: gpu={result.get('gpu_token')} "
+        f"sample={result.get('sample_id')} seed={result.get('seed')}",
+        file=sys.stderr,
+        flush=True,
+    )
+    print(f"error: {result.get('error')}", file=sys.stderr, flush=True)
+
+    log_path = result.get("log")
+    if log_path:
+        print(f"log: {log_path}", file=sys.stderr, flush=True)
+        log_tail = read_log_tail(str(log_path), max_lines=max_log_lines)
+        if log_tail:
+            print(
+                f"----- last {max_log_lines} log lines -----",
+                file=sys.stderr,
+                flush=True,
+            )
+            print(log_tail, file=sys.stderr, flush=True)
+            print("----- end log tail -----", file=sys.stderr, flush=True)
+    else:
+        print(
+            "log: unavailable (the GPU worker may have crashed before creating one)",
+            file=sys.stderr,
+            flush=True,
+        )
+    print(separator, file=sys.stderr, flush=True)
+
+
 def run_one_task(task: Task, config: CommonConfig, gpu_token: str) -> dict[str, Any]:
     start_time = time.time()
     run_root = Path(config.run_root)
@@ -710,6 +761,8 @@ def collect_results(
             f"seed={result['seed']}",
             flush=True,
         )
+        if not result["success"]:
+            print_failure_details(result)
 
     for process in processes:
         process.join()
@@ -727,24 +780,31 @@ def collect_results(
             f"seed={result['seed']}",
             flush=True,
         )
+        if not result["success"]:
+            print_failure_details(result)
 
     completed_task_ids = {int(result["task_id"]) for result in results}
     for task in tasks:
         if task.task_id not in completed_task_ids:
-            results.append(
-                {
-                    "task_id": task.task_id,
-                    "sample_id": task.sample_id,
-                    "seed": task.seed,
-                    "gpu_token": None,
-                    "success": False,
-                    "generated_video": None,
-                    "concat_video": None,
-                    "log": None,
-                    "duration_seconds": None,
-                    "error": "No result was returned; a GPU worker may have crashed.",
-                }
+            missing_result = {
+                "task_id": task.task_id,
+                "sample_id": task.sample_id,
+                "seed": task.seed,
+                "gpu_token": None,
+                "success": False,
+                "generated_video": None,
+                "concat_video": None,
+                "log": None,
+                "duration_seconds": None,
+                "error": "No result was returned; a GPU worker may have crashed.",
+            }
+            results.append(missing_result)
+            print(
+                f"[{len(results):>4}/{len(tasks)}] FAILED "
+                f"gpu=None sample={task.sample_id} seed={task.seed}",
+                flush=True,
             )
+            print_failure_details(missing_result)
 
     return sorted(results, key=lambda item: int(item["task_id"]))
 
