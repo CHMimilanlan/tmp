@@ -1,0 +1,151 @@
+Generating samples:   0%|                                                                                                               | 0/1000 [00:00<?, ?sample/s]INFO 08-08 13:40:10 [hf.py:314] Detected the chat template content format to be 'string'. You can set `--chat-template-content-format` to override this.
+
+
+^CTraceback (most recent call last):
+  File "/data/vjuicefs_ai_camera_jgroup_acadmic/public_data/11194554/WorkSpace/SysthesisDatasets/NormalPromptDataset/ltx_spatial_dataset_generator/generate_dataset.py", line 104, in <module>
+(Worker_TP3 pid=898561) WARNING 08-08 13:48:09 [multiproc_executor.py:871] WorkerProc was terminated
+(Worker_TP1 pid=898559) WARNING 08-08 13:48:09 [multiproc_executor.py:871] WorkerProc was terminated
+(Worker_TP2 pid=898560) WARNING 08-08 13:48:09 [multiproc_executor.py:871] WorkerProc was terminated
+(Worker_TP0 pid=898558) WARNING 08-08 13:48:09 [multiproc_executor.py:871] WorkerProc was terminated
+(EngineCore pid=898297) INFO 08-08 13:48:09 [core.py:1210] Shutdown initiated (timeout=0)
+(EngineCore pid=898297) INFO 08-08 13:48:09 [core.py:1215] Aborting 1 requests
+    main()
+  File "/data/vjuicefs_ai_camera_jgroup_acadmic/public_data/11194554/WorkSpace/SysthesisDatasets/NormalPromptDataset/ltx_spatial_dataset_generator/generate_dataset.py", line 91, in main
+    manifest = generate_dataset(
+               ^^^^^^^^^^^^^^^^^
+  File "/data/vjuicefs_ai_camera_jgroup_acadmic/public_data/11194554/WorkSpace/SysthesisDatasets/NormalPromptDataset/ltx_spatial_dataset_generator/spatial_dataset_gen/pipeline.py", line 361, in generate_dataset
+    prompt, qwen2_result = _generate_final_prompt(
+                           ^^^^^^^^^^^^^^^^^^^^^^^
+  File "/data/vjuicefs_ai_camera_jgroup_acadmic/public_data/11194554/WorkSpace/SysthesisDatasets/NormalPromptDataset/ltx_spatial_dataset_generator/spatial_dataset_gen/pipeline.py", line 268, in _generate_final_prompt
+    result = client.chat_json(
+             ^^^^^^^^^^^^^^^^^
+  File "/data/vjuicefs_ai_camera_jgroup_acadmic/public_data/11194554/WorkSpace/SysthesisDatasets/NormalPromptDataset/ltx_spatial_dataset_generator/spatial_dataset_gen/qwen_client.py", line 163, in chat_json
+    outputs = self.llm.chat(
+              ^^^^^^^^^^^^^^
+  File "/root/miniconda3/envs/qwen/lib/python3.12/site-packages/vllm/entrypoints/llm.py", line 1031, in chat
+    return self._run_chat(
+           ^^^^^^^^^^^^^^^
+  File "/root/miniconda3/envs/qwen/lib/python3.12/site-packages/vllm/entrypoints/llm.py", line 1885, in _run_chat
+    return self._render_and_run_requests(
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/root/miniconda3/envs/qwen/lib/python3.12/site-packages/vllm/entrypoints/llm.py", line 1937, in _render_and_run_requests
+    return self._run_engine(output_type, use_tqdm=use_tqdm)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/root/miniconda3/envs/qwen/lib/python3.12/site-packages/vllm/entrypoints/llm.py", line 2011, in _run_engine
+    step_outputs = self.llm_engine.step()
+                   ^^^^^^^^^^^^^^^^^^^^^^
+  File "/root/miniconda3/envs/qwen/lib/python3.12/site-packages/vllm/v1/engine/llm_engine.py", line 302, in step
+    outputs = self.engine_core.get_output()
+              ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/root/miniconda3/envs/qwen/lib/python3.12/site-packages/vllm/v1/engine/core_client.py", line 777, in get_output
+    outputs = self.outputs_queue.get()
+              ^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/root/miniconda3/envs/qwen/lib/python3.12/queue.py", line 171, in get
+    self.not_empty.wait()
+  File "/root/miniconda3/envs/qwen/lib/python3.12/threading.py", line 355, in wait
+    waiter.acquire()
+KeyboardInterrupt
+^CException ignored in atexit callback: <bound method finalize._exitfunc of <class 'weakref.finalize'>>
+Traceback (most recent call last):
+  File "/root/miniconda3/envs/qwen/lib/python3.12/weakref.py", line 666, in _exitfunc
+    f()
+  File "/root/miniconda3/envs/qwen/lib/python3.12/weakref.py", line 590, in __call__
+    return info.func(*info.args, **(info.kwargs or {}))
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/root/miniconda3/envs/qwen/lib/python3.12/site-packages/vllm/v1/utils.py", line 347, in shutdown
+    proc.join(remaining)
+  File "/root/miniconda3/envs/qwen/lib/python3.12/multiprocessing/process.py", line 149, in join
+    res = self._popen.wait(timeout)
+          ^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/root/miniconda3/envs/qwen/lib/python3.12/multiprocessing/popen_fork.py", line 40, in wait
+    if not wait([self.sentinel], timeout):
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/root/miniconda3/envs/qwen/lib/python3.12/multiprocessing/connection.py", line 1136, in wait
+    ready = selector.select(timeout)
+            ^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/root/miniconda3/envs/qwen/lib/python3.12/selectors.py", line 415, in select
+    fd_event_list = self._selector.poll(timeout)
+                    ^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+KeyboardInterrupt: 
+(EngineCore pid=898297) ERROR 08-08 13:48:11 [multiproc_executor.py:273] Worker proc VllmWorker-3 died unexpectedly, shutting down executor.
+(EngineCore pid=898297) ERROR 08-08 13:48:12 [dump_input.py:72] Dumping input data for V1 LLM engine (v0.19.1) with config: model='/data/vjuicefs_ai_camera_jgroup_video/public_data/Video_Data/VideoAudioData/VideoAudioModels/Qwen3.5-35B-A3B', speculative_config=None, tokenizer='/data/vjuicefs_ai_camera_jgroup_video/public_data/Video_Data/VideoAudioData/VideoAudioModels/Qwen3.5-35B-A3B', skip_tokenizer_init=False, tokenizer_mode=auto, revision=None, tokenizer_revision=None, trust_remote_code=False, dtype=torch.bfloat16, max_seq_len=32768, download_dir=None, load_format=auto, tensor_parallel_size=4, pipeline_parallel_size=1, data_parallel_size=1, decode_context_parallel_size=1, dcp_comm_backend=ag_rs, disable_custom_all_reduce=False, quantization=None, enforce_eager=False, enable_return_routed_experts=False, kv_cache_dtype=auto, device_config=cuda, structured_outputs_config=StructuredOutputsConfig(backend='auto', disable_any_whitespace=False, disable_additional_properties=False, reasoning_parser='', reasoning_parser_plugin='', enable_in_reasoning=False), observability_config=ObservabilityConfig(show_hidden_metrics_for_version=None, otlp_traces_endpoint=None, collect_detailed_traces=None, kv_cache_metrics=False, kv_cache_metrics_sample=0.01, cudagraph_metrics=False, enable_layerwise_nvtx_tracing=False, enable_mfu_metrics=False, enable_mm_processor_stats=False, enable_logging_iteration_details=False), seed=42, served_model_name=/data/vjuicefs_ai_camera_jgroup_video/public_data/Video_Data/VideoAudioData/VideoAudioModels/Qwen3.5-35B-A3B, enable_prefix_caching=True, enable_chunked_prefill=True, pooler_config=None, compilation_config={'mode': <CompilationMode.VLLM_COMPILE: 3>, 'debug_dump_path': None, 'cache_dir': '', 'compile_cache_save_format': 'binary', 'backend': 'inductor', 'custom_ops': ['none'], 'splitting_ops': ['vllm::unified_attention', 'vllm::unified_attention_with_output', 'vllm::unified_mla_attention', 'vllm::unified_mla_attention_with_output', 'vllm::mamba_mixer2', 'vllm::mamba_mixer', 'vllm::short_conv', 'vllm::linear_attention', 'vllm::plamo2_mamba_mixer', 'vllm::gdn_attention_core', 'vllm::olmo_hybrid_gdn_full_forward', 'vllm::kda_attention', 'vllm::sparse_attn_indexer', 'vllm::rocm_aiter_sparse_attn_indexer', 'vllm::unified_kv_cache_update', 'vllm::unified_mla_kv_cache_update'], 'compile_mm_encoder': False, 'cudagraph_mm_encoder': False, 'encoder_cudagraph_token_budgets': [], 'encoder_cudagraph_max_images_per_batch': 0, 'compile_sizes': [], 'compile_ranges_endpoints': [8192], 'inductor_compile_config': {'enable_auto_functionalized_v2': False, 'size_asserts': False, 'alignment_asserts': False, 'scalar_asserts': False, 'combo_kernels': True, 'benchmark_combo_kernel': True}, 'inductor_passes': {}, 'cudagraph_mode': <CUDAGraphMode.FULL_AND_PIECEWISE: (2, 1)>, 'cudagraph_num_of_warmups': 1, 'cudagraph_capture_sizes': [1, 2, 4, 8, 16, 24, 32, 40, 48, 56, 64, 72, 80, 88, 96, 104, 112, 120, 128, 136, 144, 152, 160, 168, 176, 184, 192, 200, 208, 216, 224, 232, 240, 248, 256, 272, 288, 304, 320, 336, 352, 368, 384, 400, 416, 432, 448, 464, 480, 496, 512], 'cudagraph_copy_inputs': False, 'cudagraph_specialize_lora': True, 'use_inductor_graph_partition': False, 'pass_config': {'fuse_norm_quant': False, 'fuse_act_quant': False, 'fuse_attn_quant': False, 'enable_sp': False, 'fuse_gemm_comms': False, 'fuse_allreduce_rms': False}, 'max_cudagraph_capture_size': 512, 'dynamic_shapes_config': {'type': <DynamicShapesType.BACKED: 'backed'>, 'evaluate_guards': False, 'assume_32_bit_indexing': False}, 'local_cache_dir': None, 'fast_moe_cold_start': True, 'static_all_moe_layers': []}, 
+(EngineCore pid=898297) ERROR 08-08 13:48:12 [dump_input.py:79] Dumping scheduler output for model execution: SchedulerOutput(scheduled_new_reqs=[], scheduled_cached_reqs=CachedRequestData(req_ids=['40-8ef22142'],resumed_req_ids=set(),new_token_ids_lens=[],all_token_ids_lens={},new_block_ids=[None],num_computed_tokens=[1741],num_output_tokens=[402]), num_scheduled_tokens={40-8ef22142: 1}, total_num_scheduled_tokens=1, scheduled_spec_decode_tokens={}, scheduled_encoder_inputs={}, num_common_prefix_blocks=[0, 0, 0, 4], finished_req_ids=[], free_encoder_mm_hashes=[], preempted_req_ids=[], has_structured_output_requests=false, pending_structured_output_tokens=false, num_invalid_spec_tokens=null, kv_connector_metadata=null, ec_connector_metadata=null, new_block_ids_to_zero=null)
+(EngineCore pid=898297) ERROR 08-08 13:48:12 [core.py:1110] EngineCore encountered a fatal error.
+(EngineCore pid=898297) ERROR 08-08 13:48:12 [core.py:1110] Traceback (most recent call last):
+(EngineCore pid=898297) ERROR 08-08 13:48:12 [core.py:1110]   File "/root/miniconda3/envs/qwen/lib/python3.12/site-packages/vllm/v1/engine/core.py", line 1101, in run_engine_core
+(EngineCore pid=898297) ERROR 08-08 13:48:12 [core.py:1110]     engine_core.run_busy_loop()
+(EngineCore pid=898297) ERROR 08-08 13:48:12 [core.py:1110]   File "/root/miniconda3/envs/qwen/lib/python3.12/site-packages/vllm/v1/engine/core.py", line 1142, in run_busy_loop
+(EngineCore pid=898297) ERROR 08-08 13:48:12 [core.py:1110]     self._process_engine_step()
+(EngineCore pid=898297) ERROR 08-08 13:48:12 [core.py:1110]   File "/root/miniconda3/envs/qwen/lib/python3.12/site-packages/vllm/v1/engine/core.py", line 1181, in _process_engine_step
+(EngineCore pid=898297) ERROR 08-08 13:48:12 [core.py:1110]     outputs, model_executed = self.step_fn()
+(EngineCore pid=898297) ERROR 08-08 13:48:12 [core.py:1110]                               ^^^^^^^^^^^^^^
+(EngineCore pid=898297) ERROR 08-08 13:48:12 [core.py:1110]   File "/root/miniconda3/envs/qwen/lib/python3.12/site-packages/vllm/v1/engine/core.py", line 499, in step_with_batch_queue
+(EngineCore pid=898297) ERROR 08-08 13:48:12 [core.py:1110]     model_output = future.result()
+(EngineCore pid=898297) ERROR 08-08 13:48:12 [core.py:1110]                    ^^^^^^^^^^^^^^^
+(EngineCore pid=898297) ERROR 08-08 13:48:12 [core.py:1110]   File "/root/miniconda3/envs/qwen/lib/python3.12/site-packages/vllm/v1/executor/multiproc_executor.py", line 84, in result
+(EngineCore pid=898297) ERROR 08-08 13:48:12 [core.py:1110]     return super().result()
+(EngineCore pid=898297) ERROR 08-08 13:48:12 [core.py:1110]            ^^^^^^^^^^^^^^^^
+(EngineCore pid=898297) ERROR 08-08 13:48:12 [core.py:1110]   File "/root/miniconda3/envs/qwen/lib/python3.12/concurrent/futures/_base.py", line 449, in result
+(EngineCore pid=898297) ERROR 08-08 13:48:12 [core.py:1110]     return self.__get_result()
+(EngineCore pid=898297) ERROR 08-08 13:48:12 [core.py:1110]            ^^^^^^^^^^^^^^^^^^^
+(EngineCore pid=898297) ERROR 08-08 13:48:12 [core.py:1110]   File "/root/miniconda3/envs/qwen/lib/python3.12/concurrent/futures/_base.py", line 401, in __get_result
+(EngineCore pid=898297) ERROR 08-08 13:48:12 [core.py:1110]     raise self._exception
+(EngineCore pid=898297) ERROR 08-08 13:48:12 [core.py:1110]   File "/root/miniconda3/envs/qwen/lib/python3.12/site-packages/vllm/v1/executor/multiproc_executor.py", line 88, in wait_for_response
+(EngineCore pid=898297) ERROR 08-08 13:48:12 [core.py:1110]     response = self.aggregate(get_response())
+(EngineCore pid=898297) ERROR 08-08 13:48:12 [core.py:1110]                               ^^^^^^^^^^^^^^
+(EngineCore pid=898297) ERROR 08-08 13:48:12 [core.py:1110]   File "/root/miniconda3/envs/qwen/lib/python3.12/site-packages/vllm/v1/executor/multiproc_executor.py", line 376, in get_response
+(EngineCore pid=898297) ERROR 08-08 13:48:12 [core.py:1110]     status, result = mq.dequeue(timeout=dequeue_timeout)
+(EngineCore pid=898297) ERROR 08-08 13:48:12 [core.py:1110]                      ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+(EngineCore pid=898297) ERROR 08-08 13:48:12 [core.py:1110]   File "/root/miniconda3/envs/qwen/lib/python3.12/site-packages/vllm/distributed/device_communicators/shm_broadcast.py", line 755, in dequeue
+(EngineCore pid=898297) ERROR 08-08 13:48:12 [core.py:1110]     with self.acquire_read(timeout, indefinite) as buf:
+(EngineCore pid=898297) ERROR 08-08 13:48:12 [core.py:1110]          ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+(EngineCore pid=898297) ERROR 08-08 13:48:12 [core.py:1110]   File "/root/miniconda3/envs/qwen/lib/python3.12/contextlib.py", line 137, in __enter__
+(EngineCore pid=898297) ERROR 08-08 13:48:12 [core.py:1110]     return next(self.gen)
+(EngineCore pid=898297) ERROR 08-08 13:48:12 [core.py:1110]            ^^^^^^^^^^^^^^
+(EngineCore pid=898297) ERROR 08-08 13:48:12 [core.py:1110]   File "/root/miniconda3/envs/qwen/lib/python3.12/site-packages/vllm/distributed/device_communicators/shm_broadcast.py", line 677, in acquire_read
+(EngineCore pid=898297) ERROR 08-08 13:48:12 [core.py:1110]     raise RuntimeError("cancelled")
+(EngineCore pid=898297) ERROR 08-08 13:48:12 [core.py:1110] RuntimeError: cancelled
+(EngineCore pid=898297) Process EngineCore:
+(EngineCore pid=898297) Traceback (most recent call last):
+(EngineCore pid=898297)   File "/root/miniconda3/envs/qwen/lib/python3.12/multiprocessing/process.py", line 314, in _bootstrap
+(EngineCore pid=898297)     self.run()
+(EngineCore pid=898297)   File "/root/miniconda3/envs/qwen/lib/python3.12/multiprocessing/process.py", line 108, in run
+(EngineCore pid=898297)     self._target(*self._args, **self._kwargs)
+(EngineCore pid=898297)   File "/root/miniconda3/envs/qwen/lib/python3.12/site-packages/vllm/v1/engine/core.py", line 1112, in run_engine_core
+(EngineCore pid=898297)     raise e
+(EngineCore pid=898297)   File "/root/miniconda3/envs/qwen/lib/python3.12/site-packages/vllm/v1/engine/core.py", line 1101, in run_engine_core
+(EngineCore pid=898297)     engine_core.run_busy_loop()
+(EngineCore pid=898297)   File "/root/miniconda3/envs/qwen/lib/python3.12/site-packages/vllm/v1/engine/core.py", line 1142, in run_busy_loop
+(EngineCore pid=898297)     self._process_engine_step()
+(EngineCore pid=898297)   File "/root/miniconda3/envs/qwen/lib/python3.12/site-packages/vllm/v1/engine/core.py", line 1181, in _process_engine_step
+(EngineCore pid=898297)     outputs, model_executed = self.step_fn()
+(EngineCore pid=898297)                               ^^^^^^^^^^^^^^
+(EngineCore pid=898297)   File "/root/miniconda3/envs/qwen/lib/python3.12/site-packages/vllm/v1/engine/core.py", line 499, in step_with_batch_queue
+(EngineCore pid=898297)     model_output = future.result()
+(EngineCore pid=898297)                    ^^^^^^^^^^^^^^^
+(EngineCore pid=898297)   File "/root/miniconda3/envs/qwen/lib/python3.12/site-packages/vllm/v1/executor/multiproc_executor.py", line 84, in result
+(EngineCore pid=898297)     return super().result()
+(EngineCore pid=898297)            ^^^^^^^^^^^^^^^^
+(EngineCore pid=898297)   File "/root/miniconda3/envs/qwen/lib/python3.12/concurrent/futures/_base.py", line 449, in result
+(EngineCore pid=898297)     return self.__get_result()
+(EngineCore pid=898297)            ^^^^^^^^^^^^^^^^^^^
+(EngineCore pid=898297)   File "/root/miniconda3/envs/qwen/lib/python3.12/concurrent/futures/_base.py", line 401, in __get_result
+(EngineCore pid=898297)     raise self._exception
+(EngineCore pid=898297)   File "/root/miniconda3/envs/qwen/lib/python3.12/site-packages/vllm/v1/executor/multiproc_executor.py", line 88, in wait_for_response
+(EngineCore pid=898297)     response = self.aggregate(get_response())
+(EngineCore pid=898297)                               ^^^^^^^^^^^^^^
+(EngineCore pid=898297)   File "/root/miniconda3/envs/qwen/lib/python3.12/site-packages/vllm/v1/executor/multiproc_executor.py", line 376, in get_response
+(EngineCore pid=898297)     status, result = mq.dequeue(timeout=dequeue_timeout)
+(EngineCore pid=898297)                      ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+(EngineCore pid=898297)   File "/root/miniconda3/envs/qwen/lib/python3.12/site-packages/vllm/distributed/device_communicators/shm_broadcast.py", line 755, in dequeue
+(EngineCore pid=898297)     with self.acquire_read(timeout, indefinite) as buf:
+(EngineCore pid=898297)          ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+(EngineCore pid=898297)   File "/root/miniconda3/envs/qwen/lib/python3.12/contextlib.py", line 137, in __enter__
+(EngineCore pid=898297)     return next(self.gen)
+(EngineCore pid=898297)            ^^^^^^^^^^^^^^
+(EngineCore pid=898297)   File "/root/miniconda3/envs/qwen/lib/python3.12/site-packages/vllm/distributed/device_communicators/shm_broadcast.py", line 677, in acquire_read
+(EngineCore pid=898297)     raise RuntimeError("cancelled")
+(EngineCore pid=898297) RuntimeError: cancelled
+Generating samples:   0%|                                                                                                               | 0/1000 [08:04<?, ?sample/s]
+/root/miniconda3/envs/qwen/lib/python3.12/multiprocessing/resource_tracker.py:279: UserWarning: resource_tracker: There appear to be 4 leaked shared_memory objects to clean up at shutdown
+  warnings.warn('resource_tracker: There appear to be %d '
